@@ -1,75 +1,128 @@
-from fastapi import FastAPI, Request, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from app.core.config import settings
-from app.core.logging import setup_logging, logger
-from app.core.exceptions import DocuMindException
-from app.core.database import engine
-from app.models.base import Base
-# Import models to ensure they register on Base metadata
-from app.api import auth, health, documents, chat
+from contextlib import asynccontextmanager
 
-
-# 1. Initialize Logging Configuration
-setup_logging()
-logger.info("Initializing DocuMind AI Platform...")
-
-# 2. Database migrations - Auto-create SQLite database tables on startup
 try:
-    logger.info("Syncing relational database models...")
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database synced successfully.")
-except Exception as e:
-    logger.error(f"Failed to initialize database: {str(e)}", exc_info=True)
+    from fastapi import FastAPI, Request, status
+    from fastapi.exceptions import RequestValidationError
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import JSONResponse
+except Exception:  # pragma: no cover - fallback for linters/IDE when fastapi is not installed
+    # Lightweight fallbacks so static analyzers or environments without FastAPI don't error.
+    from typing import Any
 
-# 3. Create FastAPI Application instance
+    class FastAPI:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            pass
+
+    Request = Any
+    RequestValidationError = Exception
+    CORSMiddleware = object
+
+    class status:  # type: ignore
+        HTTP_422_UNPROCESSABLE_ENTITY = 422
+        HTTP_500_INTERNAL_SERVER_ERROR = 500
+
+    class JSONResponse:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            pass
+
+from app.core.config import settings
+from app.core.database import engine
+from app.core.exceptions import DocuMindException
+from app.core.logging import logger, setup_logging
+from app.models.base import Base
+
+
+setup_logging()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting Iris AI Platform...")
+
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables initialized successfully.")
+    except Exception as exc:
+        logger.exception("Database initialization failed: %s", exc)
+
+    yield
+
+    logger.info("Stopping Iris AI Platform...")
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Intelligent Document Understanding and Retrieval API Platform",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://iris-ai-document-reade.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:5175",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-from fastapi.exceptions import RequestValidationError
-
-# 5. Global Exception Handlers mapping structured errors to client JSON
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logger.warning(f"Request validation error on {request.url.path}: {exc.errors()}")
+async def validation_exception_handler(
+    request: "Request",
+    exc: "RequestValidationError",
+):
+    logger.warning(
+        "Validation error on %s: %s",
+        request.url.path,
+        exc.errors(),
+    )
+
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"error": "Invalid request payload or missing JSON parameters."}
+        content={
+            "error": "Invalid request payload or missing JSON parameters.",
+            "details": exc.errors(),
+        },
     )
+
 
 @app.exception_handler(DocuMindException)
-async def documind_exception_handler(request: Request, exc: DocuMindException):
-    logger.warning(f"Application exception intercepted on {request.url.path}: {exc.message}")
+async def documind_exception_handler(
+    request: Request,
+    exc: DocuMindException,
+):
+    logger.warning(
+        "Application error on %s: %s",
+        request.url.path,
+        exc.message,
+    )
+
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": exc.message}
+        content={"error": exc.message},
     )
+
 
 @app.exception_handler(Exception)
-async def generic_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled system error on {request.url.path}: {str(exc)}", exc_info=True)
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"error": "An internal server error occurred. Please check system logs."}
+async def generic_exception_handler(
+    request: Request,
+    exc: Exception,
+):
+    logger.exception(
+        "Unhandled error on %s: %s",
+        request.url.path,
+        exc,
     )
 
-# 6. Register Routers
-app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
-app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["Observability"])
-app.include_router(documents.router, prefix=f"{settings.API_V1_STR}/documents", tags=["Documents"])
-app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/chat", tags=["Chat"])
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"error": "Internal server error."},
+    )
 
 
 @app.get("/")
@@ -77,5 +130,42 @@ def read_root():
     return {
         "message": "Welcome to Iris AI Platform API",
         "docs_url": "/docs",
-        "health_url": "/api/v1/health"
+        "health_url": "/api/v1/health",
     }
+
+
+@app.get("/api/v1/health")
+def basic_health():
+    return {"status": "healthy"}
+
+
+# Import routers after the app and basic routes are created.
+try:
+    from app.api import auth, chat, documents, health
+
+    app.include_router(
+        auth.router,
+        prefix=f"{settings.API_V1_STR}/auth",
+        tags=["Authentication"],
+    )
+
+    app.include_router(
+        health.router,
+        prefix=f"{settings.API_V1_STR}/health",
+        tags=["Observability"],
+    )
+
+    app.include_router(
+        documents.router,
+        prefix=f"{settings.API_V1_STR}/documents",
+        tags=["Documents"],
+    )
+
+    app.include_router(
+        chat.router,
+        prefix=f"{settings.API_V1_STR}/chat",
+        tags=["Chat"],
+    )
+
+except Exception as exc:
+    logger.exception("Router import failed: %s", exc)
