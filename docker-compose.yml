@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: documind_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=documind_default_fallback_jwt_signing_key_secret_2026
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - backend_data:/app/data
+      - backend_uploads:/app/uploads
+      - backend_chroma:/app/chroma_db
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: documind_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  backend_data:
+  backend_uploads:
+  backend_chroma:
