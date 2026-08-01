@@ -154,32 +154,30 @@ def basic_health():
 
 
 # Import routers after the app and basic routes are created.
-try:
-    from app.api import auth, chat, documents, health
+# NOTE: intentionally NOT wrapped in try/except so that a broken router
+# fails loudly with a full traceback instead of silently vanishing.
+from app.api import auth, chat, documents, health
 
-    app.include_router(
-        auth.router,
-        prefix=f"{settings.API_V1_STR}/auth",
-        tags=["Authentication"],
-    )
+app.include_router(
+    auth.router,
+    prefix=f"{settings.API_V1_STR}/auth",
+    tags=["Authentication"],
+)
 
-    app.include_router(
-        health.router,
-        prefix=f"{settings.API_V1_STR}/health",
-        tags=["Observability"],
-    )
+app.include_router(
+    health.router,
+    prefix=f"{settings.API_V1_STR}/health",
+    tags=["Observability"],
+)
 
-    app.include_router(
-        documents.router,
-        prefix=f"{settings.API_V1_STR}/documents",
-        tags=["Documents"],
-    )
+app.include_router(
+    documents.router,
+    prefix=f"{settings.API_V1_STR}/documents",
+    tags=["Documents"],
+)
 
-    app.include_router(
-        chat.router,
-        prefix=f"{settings.API_V1_STR}/chat",
-        tags=["Chat"],
-    )
-
-except Exception as exc:
-    logger.exception("Router import failed: %s", exc)
+app.include_router(
+    chat.router,
+    prefix=f"{settings.API_V1_STR}/chat",
+    tags=["Chat"],
+)
