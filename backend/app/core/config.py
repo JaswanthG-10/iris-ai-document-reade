@@ -81,5 +81,9 @@ class Settings(BaseModel):
 
 settings = Settings()
 
-settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-Path(settings.CHROMA_PERSIST_DIR).mkdir(parents=True, exist_ok=True)
+# Ensure critical directories exist — never let this crash the whole app
+for _dir in (settings.UPLOAD_DIR, Path(settings.CHROMA_PERSIST_DIR)):
+    try:
+        _dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
