@@ -71,22 +71,36 @@ app.add_middleware(
 )
 
 
+def sanitize_error_details(errors):
+    sanitized = []
+    for err in errors:
+        err_copy = dict(err)
+        if "input" in err_copy:
+            val = err_copy["input"]
+            if isinstance(val, bytes):
+                err_copy["input"] = f"<bytes len={len(val)}>"
+            elif not isinstance(val, (str, int, float, bool, list, dict, type(None))):
+                err_copy["input"] = str(val)
+        sanitized.append(err_copy)
+    return sanitized
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(
-    request: "Request",
-    exc: "RequestValidationError",
+    request: Request,
+    exc: RequestValidationError,
 ):
     logger.warning(
         "Validation error on %s: %s",
         request.url.path,
-        exc.errors(),
+        sanitize_error_details(exc.errors()),
     )
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
             "error": "Invalid request payload or missing JSON parameters.",
-            "details": exc.errors(),
+            "details": sanitize_error_details(exc.errors()),
         },
     )
 

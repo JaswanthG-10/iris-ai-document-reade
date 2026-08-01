@@ -1,5 +1,6 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, status  # type: ignore[import]
+from typing import Optional
+from fastapi import APIRouter, Depends, status, Request  # type: ignore[import]
 from fastapi.security import OAuth2PasswordBearer  # type: ignore[import]
 from sqlalchemy.orm import Session  # type: ignore[import]
 from app.core.database import get_db
@@ -7,7 +8,7 @@ from app.core.security import verify_password, create_access_token, verify_acces
 from app.core.exceptions import AuthenticationException, DuplicateException
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
-from app.schemas.user import UserCreate, UserResponse, Token, UserLogin
+from app.schemas.user import UserCreate, UserResponse, Token
 
 router = APIRouter()
 
@@ -40,10 +41,33 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     return UserRepository.create(db, user_in)
 
 @router.post("/login", response_model=Token)
-def login(credentials: UserLogin, db: Session = Depends(get_db)):
-    """Authenticates credentials and returns standard JWT Token session."""
-    user = UserRepository.get_by_email(db, credentials.username)  # username field maps to email
-    if not user or not verify_password(credentials.password, user.password_hash):
+async def login(request: Request, db: Session = Depends(get_db)):
+    """Authenticates credentials (via JSON or Form data) and returns standard JWT Token session."""
+    username: Optional[str] = None
+    password: Optional[str] = None
+
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+            username = body.get("username") or body.get("email")
+            password = body.get("password")
+        except Exception:
+            pass
+    
+    if not username or not password:
+        try:
+            form = await request.form()
+            username = form.get("username") or form.get("email")
+            password = form.get("password")
+        except Exception:
+            pass
+
+    if not username or not password:
+        raise AuthenticationException("Incorrect email or password")
+
+    user = UserRepository.get_by_email(db, username)
+    if not user or not verify_password(password, user.password_hash):
         raise AuthenticationException("Incorrect email or password")
     
     access_token = create_access_token(subject=user.email)

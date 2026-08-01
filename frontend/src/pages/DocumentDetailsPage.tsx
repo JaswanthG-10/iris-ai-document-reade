@@ -1,233 +1,272 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   FileText, 
-  Layers, 
   Send, 
-  Bot, 
-  CheckCircle2, 
   ArrowLeft, 
-  RefreshCw, 
   Clock,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  Sparkles,
+  Layers,
+  FileCode,
+  Hash
 } from "lucide-react";
 import type { Document, Message } from "../types";
-import { Button, Badge } from "../components/ui/DesignSystem";
+import { Button, Badge, Card } from "../components/ui/DesignSystem";
+import { chatApi } from "../services/api";
 
 interface DocumentDetailsPageProps {
   document: Document;
   onBack: () => void;
+  onOpenChatWithDoc?: (docId: number) => void;
 }
 
 export const DocumentDetailsPage: React.FC<DocumentDetailsPageProps> = ({
   document,
-  onBack
+  onBack,
+  onOpenChatWithDoc
 }) => {
   const [activePage, setActivePage] = useState(1);
   const [queryInput, setQueryInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      conversation_id: 1,
-      role: "assistant",
-      content: `Scoped RAG session active for **${document.display_name}**. Ask questions specifically regarding this document's vector chunks.`,
-      model_name: "Claude 3.5 Sonnet",
-      created_at: new Date().toISOString()
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isQuerying, setIsQuerying] = useState(false);
+  const [convId, setConvId] = useState<number | null>(null);
 
-  const processingStages = [
-    { stage: "Uploaded", done: true },
-    { stage: "Validating", done: true },
-    { stage: "Extracting", done: ["Extracting", "Chunking", "Embedding", "Ready"].includes(document.status) },
-    { stage: "Chunking", done: ["Chunking", "Embedding", "Ready"].includes(document.status) },
-    { stage: "Embedding", done: ["Embedding", "Ready"].includes(document.status) },
-    { stage: "Ready", done: document.status === "Ready" }
-  ];
+  useEffect(() => {
+    // Initialize scoped conversation for this document
+    const initScopedChat = async () => {
+      try {
+        const conv = await chatApi.createConversation(`Scoped Session: ${document.display_name}`);
+        setConvId(conv.id);
+        setMessages([
+          {
+            id: 1,
+            conversation_id: conv.id,
+            role: "assistant",
+            content: `Scoped RAG session active for **${document.display_name}**. Ask any question specifically regarding this document's vector chunks.`,
+            model_name: "gemini-2.0-flash",
+            created_at: new Date().toISOString()
+          }
+        ]);
+      } catch (err) {
+        console.error("Failed creating scoped conversation:", err);
+      }
+    };
+    initScopedChat();
+  }, [document.id]);
 
   const handleSendQuery = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!queryInput.trim() || isQuerying) return;
+    if (!queryInput.trim() || isQuerying || !convId) return;
+
+    const userText = queryInput;
+    setQueryInput("");
+    setIsQuerying(true);
 
     const userMsg: Message = {
       id: Date.now(),
-      conversation_id: 1,
+      conversation_id: convId,
       role: "user",
-      content: queryInput,
+      content: userText,
       model_name: null,
       created_at: new Date().toISOString()
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    setQueryInput("");
-    setIsQuerying(true);
 
-    setTimeout(() => {
-      const aiMsg: Message = {
+    try {
+      const reply = await chatApi.submitQuestion(convId, userText, [document.id]);
+      setMessages((prev) => [...prev.filter((m) => m.id !== userMsg.id), userMsg, reply]);
+    } catch (err: any) {
+      const errMsg: Message = {
         id: Date.now() + 1,
-        conversation_id: 1,
+        conversation_id: convId,
         role: "assistant",
-        content: `Based on **${document.display_name}** (Page ${activePage}): According to the extracted text passages, the operational telemetry and vector embedding density confirm 98.4% compliance with NEXUS platform specs. [Citation: Page ${activePage}]`,
-        model_name: "Claude 3.5 Sonnet",
-        created_at: new Date().toISOString(),
-        sources: [
-          {
-            id: 101,
-            message_id: Date.now() + 1,
-            document_id: document.id,
-            chunk_id: 1,
-            page_number: activePage,
-            relevance_score: 0.98,
-            supporting_excerpt: `Operational parameters for ${document.display_name} exhibit sub-second latency and zero off-target cleavage.`,
-            document_name: document.display_name
-          }
-        ]
+        content: `Error querying document: ${err.message || "RAG engine unreachable"}`,
+        model_name: null,
+        created_at: new Date().toISOString()
       };
-
-      setMessages((prev) => [...prev, aiMsg]);
+      setMessages((prev) => [...prev, errMsg]);
+    } finally {
       setIsQuerying(false);
-    }, 800);
+    }
   };
 
+  const formatSize = (bytes: number) => (bytes / (1024 * 1024)).toFixed(2) + " MB";
+  const totalPages = document.page_count || 1;
+
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] max-w-[1600px] mx-auto p-4 space-y-4">
-      <div className="flex items-center justify-between glass-panel p-3.5">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 font-sans">
+      {/* Top Header Navigation */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-[#E7E9F3] dark:border-slate-800 rounded-3xl p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back to Library
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Library
           </Button>
-          <div className="h-4 w-px bg-slate-800" />
-          <h2 className="text-sm font-bold text-white flex items-center gap-2">
-            <FileText className="w-4 h-4 text-indigo-400" />
-            {document.display_name}
-          </h2>
+          <div className="h-4 w-px bg-[#E7E9F3] dark:bg-slate-800" />
+          <div>
+            <h1 className="text-lg font-extrabold text-[#1A1D2E] dark:text-white flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[#8B5CF6]" />
+              {document.display_name}
+            </h1>
+            <p className="text-xs text-[#6B7085] dark:text-slate-400 font-mono">
+              Original: {document.original_name}
+            </p>
+          </div>
         </div>
 
-        <Badge variant={document.status === "Ready" ? "emerald" : "amber"}>
-          {document.status}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge variant={document.status === "Ready" ? "emerald" : "amber"}>
+            {document.status}
+          </Badge>
+
+          {onOpenChatWithDoc && (
+            <Button size="sm" onClick={() => onOpenChatWithDoc(document.id)}>
+              <MessageSquare className="w-4 h-4 mr-1.5" /> Open in Iris Chat
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
-        <div className="lg:col-span-3 glass-panel p-4 flex flex-col justify-between overflow-y-auto space-y-4 font-mono text-xs">
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-3 flex items-center gap-1.5">
-              <Layers className="w-4 h-4" /> Document Metadata
-            </h3>
+      {/* Grid Layout: Extended Specs & Scoped RAG Drawer */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Extended Metadata & Page Viewer */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="p-6 space-y-4 border-[#E7E9F3] dark:border-slate-800">
+            <h2 className="text-sm font-bold text-[#1A1D2E] dark:text-white uppercase tracking-wider font-mono flex items-center gap-2">
+              <Layers className="w-4 h-4 text-[#8B5CF6]" /> Document Extended Telemetry
+            </h2>
 
-            <div className="space-y-2.5 text-slate-300">
-              <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                <span className="text-slate-500 block text-[10px]">FILE NAME:</span>
-                <span className="font-semibold text-slate-200">{document.original_name}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+              <div className="p-3 rounded-2xl bg-[#F8F9FC] dark:bg-slate-950 border border-[#E7E9F3] dark:border-slate-800">
+                <span className="text-[10px] text-[#6B7085] block">FILE SIZE</span>
+                <span className="font-bold text-[#06B6D4] text-sm">{formatSize(document.size_bytes)}</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                <span className="text-slate-500 block text-[10px]">FILE TYPE:</span>
-                <span className="font-semibold text-cyan-400 uppercase">{document.file_type || "pdf"}</span>
+
+              <div className="p-3 rounded-2xl bg-[#F8F9FC] dark:bg-slate-950 border border-[#E7E9F3] dark:border-slate-800">
+                <span className="text-[10px] text-[#6B7085] block">PAGE COUNT</span>
+                <span className="font-bold text-[#1A1D2E] dark:text-slate-100 text-sm">{totalPages} Pages</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                <span className="text-slate-500 block text-[10px]">PAGE COUNT:</span>
-                <span className="font-semibold text-slate-200">{document.page_count || 1} pages</span>
+
+              <div className="p-3 rounded-2xl bg-[#F8F9FC] dark:bg-slate-950 border border-[#E7E9F3] dark:border-slate-800">
+                <span className="text-[10px] text-[#6B7085] block">EXTRACTED TEXT</span>
+                <span className="font-bold text-[#8B5CF6] text-sm">
+                  {document.extracted_text_length ? `${document.extracted_text_length.toLocaleString()} chars` : `~${(totalPages * 1450).toLocaleString()} chars`}
+                </span>
               </div>
-              <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                <span className="text-slate-500 block text-[10px]">FILE SIZE:</span>
-                <span className="font-semibold text-slate-200">{(document.size_bytes / (1024*1024)).toFixed(2)} MB</span>
+
+              <div className="p-3 rounded-2xl bg-[#F8F9FC] dark:bg-slate-950 border border-[#E7E9F3] dark:border-slate-800">
+                <span className="text-[10px] text-[#6B7085] block">FILE FORMAT</span>
+                <span className="font-bold text-[#10B981] text-sm uppercase">{document.file_type || "pdf"}</span>
               </div>
             </div>
-          </div>
 
-          <div className="pt-4 border-t border-slate-800">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-3 flex items-center gap-1.5">
-              <Clock className="w-4 h-4" /> Processing Timeline
-            </h3>
+            <div className="pt-2 text-xs font-mono text-[#6B7085] dark:text-slate-400 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-[#A0A4B8]" />
+              Uploaded on {new Date(document.created_at).toLocaleString()}
+            </div>
+          </Card>
 
-            <div className="space-y-2">
-              {processingStages.map((ps, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-900/40 border border-slate-800/60 text-[11px]">
-                  <span className={ps.done ? "text-emerald-400 font-bold" : "text-slate-500"}>
-                    {ps.stage}
-                  </span>
-                  {ps.done ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  ) : (
-                    <RefreshCw className="w-3 h-3 text-amber-400 animate-spin" />
+          {/* Page Passage Preview Card */}
+          <Card className="p-6 space-y-4 border-[#E7E9F3] dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#1A1D2E] dark:text-white font-mono flex items-center gap-2">
+                <FileCode className="w-4 h-4 text-[#06B6D4]" /> Page {activePage} Vector Passage Excerpt
+              </h3>
+
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={activePage <= 1}
+                  onClick={() => setActivePage((p) => Math.max(1, p - 1))}
+                  className="p-1.5 rounded-lg bg-[#F8F9FC] dark:bg-slate-950 border border-[#E7E9F3] dark:border-slate-800 disabled:opacity-40 text-[#6B7085]"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs font-mono font-bold text-[#1A1D2E] dark:text-slate-200">
+                  {activePage} / {totalPages}
+                </span>
+                <button
+                  disabled={activePage >= totalPages}
+                  onClick={() => setActivePage((p) => Math.min(totalPages, p + 1))}
+                  className="p-1.5 rounded-lg bg-[#F8F9FC] dark:bg-slate-950 border border-[#E7E9F3] dark:border-slate-800 disabled:opacity-40 text-[#6B7085]"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#F8F9FC] dark:bg-slate-950 border border-[#E7E9F3] dark:border-slate-800 text-xs font-mono leading-relaxed text-[#1A1D2E] dark:text-slate-300 min-h-[160px]">
+              <p className="text-[#8B5CF6] font-bold mb-2">[Excerpt Vector Chunk — Page {activePage}]</p>
+              <p>
+                Document "{document.display_name}" is indexed into ChromaDB with 1536-dimensional vector embeddings. Section {activePage} details compliance criteria, latency specifications, and operational metrics.
+              </p>
+            </div>
+          </Card>
+        </div>
+
+        {/* Right Column: Scoped Real RAG Chat */}
+        <div className="space-y-4">
+          <Card className="p-5 flex flex-col h-[520px] justify-between border-[#E7E9F3] dark:border-slate-800">
+            <div className="space-y-3 pb-3 border-b border-[#E7E9F3] dark:border-slate-800">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B5CF6] font-mono flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#8B5CF6]" /> Scoped Document RAG Query
+              </h3>
+              <p className="text-[11px] text-[#6B7085] dark:text-slate-400 font-mono">
+                Questions here query <strong>only</strong> vector chunks from this document.
+              </p>
+            </div>
+
+            {/* Chat Messages Feed */}
+            <div className="flex-1 overflow-y-auto space-y-3 py-3 pr-1 text-xs font-mono">
+              {messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`p-3 rounded-2xl ${
+                    m.role === "user"
+                      ? "bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/20 ml-6"
+                      : "bg-[#F8F9FC] dark:bg-slate-950 text-[#1A1D2E] dark:text-slate-200 border border-[#E7E9F3] dark:border-slate-800 mr-6"
+                  }`}
+                >
+                  <div className="text-[10px] text-[#6B7085] mb-1 font-bold">
+                    {m.role === "user" ? "YOU" : "IRIS AI RAG ENGINE"}
+                  </div>
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+
+                  {m.sources && m.sources.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-[#E7E9F3] dark:border-slate-800 space-y-1">
+                      {m.sources.map((s, idx) => (
+                        <div key={idx} className="text-[10px] text-[#06B6D4] flex items-center gap-1 font-bold">
+                          <Hash className="w-3 h-3" /> Citation: Page {s.page_number || 1} (Score: {Math.round((s.relevance_score || 0.9) * 100)}%)
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
 
-        <div className="lg:col-span-5 glass-panel p-4 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
-            <span className="text-xs font-bold text-slate-300 font-mono flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-cyan-400" /> Document Page Canvas
-            </span>
-
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <button
-                onClick={() => setActivePage((p) => Math.max(1, p - 1))}
-                className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="text-slate-400">Page {activePage} of {document.page_count || 1}</span>
-              <button
-                onClick={() => setActivePage((p) => Math.min(document.page_count || 1, p + 1))}
-                className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1 bg-slate-950 p-6 rounded-2xl border border-slate-800 font-mono text-xs text-slate-300 leading-relaxed overflow-y-auto space-y-4">
-            <div className="text-indigo-400 font-bold border-b border-slate-800 pb-2 flex justify-between">
-              <span>PAGE {activePage} SECTION READOUT</span>
-              <span className="text-[10px] text-emerald-400">GROUNDING VERIFIED</span>
-            </div>
-
-            <p>
-              This section contains extracted text passages for <strong className="text-white">{document.display_name}</strong>. Paragraphs are embedded into dense 1536-dimensional vector space for high-precision retrieval.
-            </p>
-
-            <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/40 text-indigo-200">
-              <span className="text-[10px] text-indigo-400 font-bold block mb-1">CITED PASSAGE HIGHLIGHT:</span>
-              "Operational parameters exhibit sub-second latency and complete compliance with DocuMind AI security standards."
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-4 glass-panel p-4 flex flex-col justify-between overflow-hidden">
-          <div className="border-b border-slate-800 pb-3 mb-3">
-            <h3 className="text-xs font-bold text-slate-200 flex items-center gap-2">
-              <Bot className="w-4 h-4 text-cyan-400" /> Scoped AI Chat Assistant
-            </h3>
-          </div>
-
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs font-mono">
-            {messages.map((msg) => {
-              const isAi = msg.role === "assistant";
-              return (
-                <div key={msg.id} className={`p-3.5 rounded-2xl ${isAi ? "bg-slate-900 border border-slate-800 text-slate-200" : "bg-indigo-600 text-white font-medium ml-auto max-w-[85%]"}`}>
-                  <p>{msg.content}</p>
+              {isQuerying && (
+                <div className="p-3 rounded-2xl bg-[#F8F9FC] dark:bg-slate-950 border border-[#E7E9F3] dark:border-slate-800 text-xs font-mono text-[#8B5CF6] flex items-center gap-2">
+                  <span className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                  Retrieving vector passages from {document.display_name}...
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </div>
 
-          <form onSubmit={handleSendQuery} className="pt-3 border-t border-slate-800 flex items-center gap-2">
-            <input
-              type="text"
-              placeholder={`Ask about ${document.display_name}...`}
-              value={queryInput}
-              onChange={(e) => setQueryInput(e.target.value)}
-              className="flex-1 px-3 py-2 text-xs rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
-            />
-            <Button type="submit" size="sm" isLoading={isQuerying}>
-              <Send className="w-3.5 h-3.5" />
-            </Button>
-          </form>
+            {/* Input Form */}
+            <form onSubmit={handleSendQuery} className="pt-2 border-t border-[#E7E9F3] dark:border-slate-800 flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Ask about this document..."
+                value={queryInput}
+                onChange={(e) => setQueryInput(e.target.value)}
+                className="flex-1 px-3 py-2 text-xs rounded-xl bg-[#F8F9FC] dark:bg-slate-950 border border-[#E7E9F3] dark:border-slate-800 text-[#1A1D2E] dark:text-slate-100 placeholder-[#A0A4B8] focus:outline-none focus:border-[#8B5CF6] font-mono"
+              />
+              <Button type="submit" size="sm" disabled={isQuerying || !queryInput.trim()}>
+                <Send className="w-3.5 h-3.5" />
+              </Button>
+            </form>
+          </Card>
         </div>
       </div>
     </div>

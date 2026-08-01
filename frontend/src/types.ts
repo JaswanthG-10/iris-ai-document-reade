@@ -41,6 +41,7 @@ export interface Document {
   updated_at: string;
   jobs?: ProcessingJob[];
   tags?: string[];
+  extracted_text_length?: number;
 }
 
 export interface MessageSource {
@@ -52,6 +53,7 @@ export interface MessageSource {
   relevance_score: number | null;
   supporting_excerpt: string;
   document_name?: string;
+  chunk_index?: number;
 }
 
 export interface Message {

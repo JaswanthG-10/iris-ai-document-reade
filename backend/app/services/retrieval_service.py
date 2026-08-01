@@ -25,7 +25,7 @@ class RetrievalService:
         query: str,
         selected_doc_ids: Optional[List[int]] = None,
         top_k: int = 5,
-        similarity_threshold: float = 0.35
+        similarity_threshold: float = 0.15
     ) -> List[Dict[str, Any]]:
         """Retrieves and ranks the most relevant document chunks matching a user query.
         
@@ -69,7 +69,13 @@ class RetrievalService:
             c for c in candidates 
             if c["relevance_score"] >= similarity_threshold
         ]
-        logger.info(f"Retrieved {len(filtered_results)} chunks matching threshold >= {similarity_threshold}.")
+
+        # Resilient Fallback: If strict threshold filtered out all candidates and threshold is reasonable (< 0.5), use top candidates
+        if not filtered_results and candidates and similarity_threshold < 0.5:
+            logger.info(f"Threshold >= {similarity_threshold} returned 0 items; falling back to top {top_k} candidates.")
+            filtered_results = candidates[:top_k]
+
+        logger.info(f"Retrieved {len(filtered_results)} chunks for query context.")
 
         # 5. Deduplicate identical text passages
         seen_contents = set()

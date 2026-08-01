@@ -15,6 +15,7 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { TopHeader } from "./components/layout/TopHeader";
 import { CommandPalette } from "./components/ui/DesignSystem";
 import { UploadModal } from "./components/documents/UploadModal";
+import { AboutDeveloperModal } from "./components/ui/AboutDeveloperModal";
 import { docApi } from "./services/api";
 import type { Document, NavigationTab } from "./types";
 
@@ -24,6 +25,7 @@ const AppContent: React.FC = () => {
   const [authView, setAuthView] = useState<"login" | "register">("login");
   const [commandOpen, setCommandOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [aboutDeveloperOpen, setAboutDeveloperOpen] = useState(false);
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
@@ -113,6 +115,7 @@ const AppContent: React.FC = () => {
           setActiveTab(tab);
           setSelectedDocId(null);
         }}
+        onOpenAboutDeveloper={() => setAboutDeveloperOpen(true)}
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -130,6 +133,10 @@ const AppContent: React.FC = () => {
             <DocumentDetailsPage
               document={selectedDocument}
               onBack={() => setSelectedDocId(null)}
+              onOpenChatWithDoc={() => {
+                setSelectedDocId(null);
+                setActiveTab("chat");
+              }}
             />
           ) : activeTab === "landing" ? (
             <LandingHero onGetStarted={() => setActiveTab("dashboard")} />
@@ -137,6 +144,11 @@ const AppContent: React.FC = () => {
             <DashboardPage
               onSelectDoc={handleSelectDoc}
               onNavigateToLibrary={() => setActiveTab("library")}
+              onNavigateTab={(tab, query) => {
+                if (query) setActivePrompt(query);
+                setActiveTab(tab as NavigationTab);
+                setSelectedDocId(null);
+              }}
             />
           ) : activeTab === "library" ? (
             <DocumentLibraryPage
@@ -162,6 +174,11 @@ const AppContent: React.FC = () => {
         isOpen={commandOpen}
         onClose={() => setCommandOpen(false)}
         onSelectAction={handleCommandAction}
+      />
+
+      <AboutDeveloperModal
+        isOpen={aboutDeveloperOpen}
+        onClose={() => setAboutDeveloperOpen(false)}
       />
 
       {uploadOpen && (

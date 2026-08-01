@@ -8,16 +8,18 @@ import {
   Globe, 
   BookOpen,
   Layers,
-  ChevronRight
+  ChevronRight,
+  Code2
 } from "lucide-react";
 import type { NavigationTab } from "../../types";
 
 interface SidebarProps {
   activeTab: NavigationTab;
   setActiveTab: (tab: NavigationTab) => void;
+  onOpenAboutDeveloper?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpenAboutDeveloper }) => {
   const navItems = [
     { id: "dashboard" as NavigationTab, label: "Dashboard", icon: LayoutDashboard },
     { id: "library" as NavigationTab, label: "Document Library", icon: FolderKanban },
@@ -85,19 +87,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
         </div>
       </div>
 
-      {/* Vector Core Telemetry Pill */}
-      <div className="p-4 rounded-2xl bg-[#F8F9FC] dark:bg-slate-900/80 border border-[#E7E9F3] dark:border-slate-800 space-y-2">
-        <div className="flex items-center justify-between text-xs font-mono">
-          <span className="text-[#6B7085] dark:text-slate-400 flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-[#06B6D4]" /> Iris Vector Core
-          </span>
-          <span className="text-[#10B981] font-bold flex items-center gap-1 text-[11px]">
-            <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" /> Active
-          </span>
+      {/* Footer Area: Vector Core Pill & About Developer Button */}
+      <div className="space-y-2.5 pt-4">
+        <div className="p-3.5 rounded-2xl bg-[#F8F9FC] dark:bg-slate-900/80 border border-[#E7E9F3] dark:border-slate-800 space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-mono">
+            <span className="text-[#6B7085] dark:text-slate-400 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-[#06B6D4]" /> Iris Vector Core
+            </span>
+            <span className="text-[#10B981] font-bold flex items-center gap-1 text-[11px]">
+              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" /> Active
+            </span>
+          </div>
+          <div className="text-[10px] text-[#A0A4B8] dark:text-slate-500 font-mono">
+            Vector DB: Chroma / FAISS Local
+          </div>
         </div>
-        <div className="text-[10px] text-[#A0A4B8] dark:text-slate-500 font-mono">
-          Vector DB: Chroma / FAISS Local
-        </div>
+
+        {/* Small About Developer Button */}
+        {onOpenAboutDeveloper && (
+          <button
+            onClick={onOpenAboutDeveloper}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-[#8B5CF6] dark:text-purple-300 border border-purple-500/20 text-xs font-mono font-bold transition-all shadow-sm active:scale-98"
+          >
+            <Code2 className="w-3.5 h-3.5" /> About Developer
+          </button>
+        )}
       </div>
     </aside>
   );

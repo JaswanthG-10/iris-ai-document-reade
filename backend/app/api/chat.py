@@ -94,14 +94,14 @@ def submit_question(
         query=msg_in.content,
         selected_doc_ids=msg_in.selected_document_ids,
         top_k=5,
-        similarity_threshold=0.35
+        similarity_threshold=0.15
     )
 
     # 4. Step 2 of RAG: Generate grounded answer and extract citations
     answer_text, citations = AnswerService.generate_grounded_answer(msg_in.content, retrieved_chunks)
 
     # 5. Persist assistant reply
-    model_name = "gemini-1.5-flash"
+    model_name = "gemini-2.0-flash"
     assistant_msg = ChatRepository.create_message(
         db=db, 
         conv_id=conv_id, 

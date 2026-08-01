@@ -35,6 +35,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
   const [hoveredSource, setHoveredSource] = useState<MessageSource | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const autoExecutedRef = useRef<string | null>(null);
 
   useEffect(() => {
     loadConversations();
@@ -52,6 +53,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (initialPrompt && initialPrompt.trim() && autoExecutedRef.current !== initialPrompt && !loadingConvs) {
+      autoExecutedRef.current = initialPrompt;
+      setInputMsg(initialPrompt);
+      executePromptQuery(initialPrompt.trim());
+    }
+  }, [initialPrompt, loadingConvs, activeConvId]);
 
   const loadConversations = async () => {
     try {
@@ -120,18 +129,28 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
     }
   };
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMsg.trim() || activeConvId === null || loading) return;
+  const executePromptQuery = async (userText: string) => {
+    if (!userText.trim() || loading) return;
 
-    const userText = inputMsg;
+    let targetConvId = activeConvId;
+    if (targetConvId === null) {
+      try {
+        const newChat = await chatApi.createConversation(`Analysis Session #${conversations.length + 1}`);
+        setConversations((prev) => [newChat, ...prev]);
+        setActiveConvId(newChat.id);
+        targetConvId = newChat.id;
+      } catch (err) {
+        console.error("Failed creating chat thread:", err);
+        return;
+      }
+    }
+
     setInputMsg("");
     setLoading(true);
 
-    // Optimistically insert user question locally
     const tempUserMsg: Message = {
       id: Date.now(),
-      conversation_id: activeConvId,
+      conversation_id: targetConvId,
       role: "user",
       content: userText,
       model_name: null,
@@ -140,16 +159,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
     setMessages((prev) => [...prev, tempUserMsg]);
 
     try {
-      const reply = await chatApi.submitQuestion(activeConvId, userText, selectedDocIds);
-      setMessages((prev) => {
-        // Replace user mock message if timestamps align, or just refresh list
-        return [...prev.filter((m) => m.id !== tempUserMsg.id), tempUserMsg, reply];
-      });
+      const reply = await chatApi.submitQuestion(targetConvId, userText, selectedDocIds);
+      setMessages((prev) => [...prev.filter((m) => m.id !== tempUserMsg.id), tempUserMsg, reply]);
     } catch (err: any) {
-      // Log error as assistant message block
       const errMsg: Message = {
         id: Date.now() + 1,
-        conversation_id: activeConvId,
+        conversation_id: targetConvId,
         role: "assistant",
         content: `Error generating response: ${err.message || "Endpoint connection failed"}`,
         model_name: null,
@@ -159,6 +174,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputMsg.trim() || loading) return;
+    executePromptQuery(inputMsg);
   };
 
   const handleToggleDocSelect = (docId: number) => {
@@ -443,36 +464,74 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
 
                       {/* Display source card citations below Assistant responses */}
                       {!isUser && msg.sources && msg.sources.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {msg.sources.map((src) => {
-                            const isHovered = hoveredSource?.id === src.id;
-                            const docObj = documents.find((d) => d.id === src.document_id);
-                            return (
-                              <div
-                                key={src.id}
-                                onMouseEnter={() => setHoveredSource(src)}
-                                onMouseLeave={() => setHoveredSource(null)}
-                                className={`text-[10px] px-2.5 py-1.5 rounded-lg border transition-all ${
-                                  isHovered
-                                    ? "bg-brandCyan/10 border-brandCyan text-brandCyan shadow-[0_0_8px_rgba(0,229,255,0.15)]"
-                                    : "bg-white/[0.02] border-white/5 text-gray-400 hover:border-white/10"
-                                } max-w-xs`}
-                              >
-                                <div className="flex items-center gap-1.5 font-semibold text-white mb-0.5">
-                                  <FileText size={10} className="text-brandCyan" />
-                                  <span className="truncate max-w-[120px]">
-                                    {docObj ? docObj.display_name : `Doc #${src.document_id}`}
-                                  </span>
-                                  <span className="text-[8px] px-1 bg-white/5 rounded text-gray-400 shrink-0">
-                                    P. {src.page_number !== null ? src.page_number : "N/A"}
-                                  </span>
+                        <div className="flex flex-col gap-2 mt-3 font-mono">
+                          <div className="text-[10px] font-bold text-[#8B5CF6] uppercase tracking-wider flex items-center gap-1.5">
+                            <BookOpen className="w-3 h-3" /> Grounded Source Citations ({msg.sources.length})
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {msg.sources.map((src, idx) => {
+                              const isHovered = hoveredSource?.id === src.id;
+                              const docObj = documents.find((d) => d.id === src.document_id);
+                              
+                              const relScore = src.relevance_score !== null ? src.relevance_score : 0.88;
+                              const confidencePercent = Math.round(relScore * 100);
+                              
+                              let confidenceBadge = {
+                                label: `High Grounding (${confidencePercent}%)`,
+                                styles: "bg-[#E7F9F1] dark:bg-emerald-950/40 text-[#10B981] border-emerald-500/20"
+                              };
+                              if (confidencePercent < 70) {
+                                confidenceBadge = {
+                                  label: `Partial Grounding (${confidencePercent}%)`,
+                                  styles: "bg-[#FEF6E7] dark:bg-amber-950/40 text-[#F59E0B] border-amber-500/20"
+                                };
+                              } else if (confidencePercent < 85) {
+                                confidenceBadge = {
+                                  label: `Medium Grounding (${confidencePercent}%)`,
+                                  styles: "bg-[#E5FAFC] dark:bg-cyan-950/40 text-[#06B6D4] border-cyan-500/20"
+                                };
+                              }
+
+                              return (
+                                <div
+                                  key={src.id}
+                                  onMouseEnter={() => setHoveredSource(src)}
+                                  onMouseLeave={() => setHoveredSource(null)}
+                                  className={`text-xs p-3 rounded-2xl border transition-all ${
+                                    isHovered
+                                      ? "bg-purple-500/10 border-[#8B5CF6] text-[#1A1D2E] dark:text-white shadow-md"
+                                      : "bg-white dark:bg-slate-900 border-[#E7E9F3] dark:border-slate-800 text-[#1A1D2E] dark:text-slate-200"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                                    <div className="flex items-center gap-1.5 font-bold truncate">
+                                      <FileText size={13} className="text-[#8B5CF6] shrink-0" />
+                                      <span className="truncate max-w-[130px]" title={docObj?.display_name || `Doc #${src.document_id}`}>
+                                        {docObj?.display_name || `Doc #${src.document_id}`}
+                                      </span>
+                                      <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/20 shrink-0">
+                                        [Doc-{idx}]
+                                      </span>
+                                    </div>
+
+                                    <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-[#F8F9FC] dark:bg-slate-950 border border-[#E7E9F3] dark:border-slate-800 text-[#6B7085] shrink-0">
+                                      Page {src.page_number !== null ? src.page_number : "N/A"}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center justify-between gap-2 mb-2">
+                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${confidenceBadge.styles}`}>
+                                      {confidenceBadge.label}
+                                    </span>
+                                  </div>
+
+                                  <p className="line-clamp-2 text-[11px] text-[#6B7085] dark:text-slate-400 italic leading-relaxed border-l-2 border-[#8B5CF6]/40 pl-2">
+                                    "{src.supporting_excerpt}"
+                                  </p>
                                 </div>
-                                <p className="line-clamp-2 text-gray-500 italic leading-snug">
-                                  "{src.supporting_excerpt}"
-                                </p>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
