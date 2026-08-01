@@ -1,4 +1,4 @@
-# DocuMind AI — Intelligent Document Understanding Platform
+# Iris Ai — Intelligent Document Understanding Platform
 
 **DocuMind AI** is an enterprise-grade, retrieval-augmented document intelligence SaaS platform designed to parse multi-format documents (PDF, DOCX, TXT, Images with OCR), generate dense 1536-dimensional vector embeddings, and deliver grounded, zero-hallucination natural-language answers with page-level citations.
 
