@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { LoginPage } from "./pages/LoginPage";
@@ -9,8 +10,6 @@ import { DocumentDetailsPage } from "./pages/DocumentDetailsPage";
 import { ChatPage } from "./pages/ChatPage";
 import { PromptLibraryPage } from "./pages/PromptLibraryPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { ArchitectureDocsPage } from "./pages/ArchitectureDocsPage";
-import { LandingHero } from "./components/landing/LandingHero";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopHeader } from "./components/layout/TopHeader";
 import { CommandPalette } from "./components/ui/DesignSystem";
@@ -68,7 +67,7 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated && activeTab !== "landing") {
+  if (!isAuthenticated) {
     return authView === "login" ? (
       <LoginPage onSwitchToRegister={() => setAuthView("register")} />
     ) : (
@@ -129,44 +128,51 @@ const AppContent: React.FC = () => {
         />
 
         <div className="flex-1 overflow-y-auto">
-          {selectedDocument ? (
-            <DocumentDetailsPage
-              document={selectedDocument}
-              onBack={() => setSelectedDocId(null)}
-              onOpenChatWithDoc={() => {
-                setSelectedDocId(null);
-                setActiveTab("chat");
-              }}
-            />
-          ) : activeTab === "landing" ? (
-            <LandingHero onGetStarted={() => setActiveTab("dashboard")} />
-          ) : activeTab === "dashboard" ? (
-            <DashboardPage
-              onSelectDoc={handleSelectDoc}
-              onNavigateToLibrary={() => setActiveTab("library")}
-              onNavigateTab={(tab, query) => {
-                if (query) setActivePrompt(query);
-                setActiveTab(tab as NavigationTab);
-                setSelectedDocId(null);
-              }}
-            />
-          ) : activeTab === "library" ? (
-            <DocumentLibraryPage
-              documents={documents}
-              loading={loadingDocs}
-              onOpenUpload={() => setUploadOpen(true)}
-              onSelectDoc={handleSelectDoc}
-              onDeleteDoc={handleDeleteDoc}
-            />
-          ) : activeTab === "chat" ? (
-            <ChatPage initialPrompt={activePrompt} />
-          ) : activeTab === "prompts" ? (
-            <PromptLibraryPage onSelectPrompt={handleSelectPrompt} />
-          ) : activeTab === "docs" ? (
-            <ArchitectureDocsPage />
-          ) : (
-            <SettingsPage />
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedDocId ? `doc-${selectedDocId}` : activeTab}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="h-full"
+            >
+              {selectedDocument ? (
+                <DocumentDetailsPage
+                  document={selectedDocument}
+                  onBack={() => setSelectedDocId(null)}
+                  onOpenChatWithDoc={() => {
+                    setSelectedDocId(null);
+                    setActiveTab("chat");
+                  }}
+                />
+              ) : activeTab === "dashboard" ? (
+                <DashboardPage
+                  onSelectDoc={handleSelectDoc}
+                  onNavigateToLibrary={() => setActiveTab("library")}
+                  onNavigateTab={(tab, query) => {
+                    if (query) setActivePrompt(query);
+                    setActiveTab(tab as NavigationTab);
+                    setSelectedDocId(null);
+                  }}
+                />
+              ) : activeTab === "library" ? (
+                <DocumentLibraryPage
+                  documents={documents}
+                  loading={loadingDocs}
+                  onOpenUpload={() => setUploadOpen(true)}
+                  onSelectDoc={handleSelectDoc}
+                  onDeleteDoc={handleDeleteDoc}
+                />
+              ) : activeTab === "chat" ? (
+                <ChatPage initialPrompt={activePrompt} />
+              ) : activeTab === "prompts" ? (
+                <PromptLibraryPage onSelectPrompt={handleSelectPrompt} />
+              ) : (
+                <SettingsPage />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 

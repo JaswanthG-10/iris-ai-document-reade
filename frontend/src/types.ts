@@ -76,10 +76,8 @@ export interface Conversation {
 }
 
 export type NavigationTab = 
-  | "landing"
   | "dashboard" 
   | "library" 
   | "chat" 
   | "prompts" 
-  | "settings"
-  | "docs";
+  | "settings";

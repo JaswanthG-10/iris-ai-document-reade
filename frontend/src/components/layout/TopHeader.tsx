@@ -19,9 +19,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       case "library": return "Document Intelligence Library";
       case "chat": return "Iris Grounded RAG Chat Engine";
       case "prompts": return "Iris View";
-      case "docs": return "Iris Architecture & Technical Specs";
       case "settings": return "Platform Settings & Preferences";
-      case "landing": return "Public SaaS Overview";
       default: return "Dashboard Overview";
     }
   };

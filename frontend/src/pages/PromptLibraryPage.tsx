@@ -11,6 +11,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { Card, Button, Badge } from "../components/ui/DesignSystem";
+import { SidebarWireframe } from "../components/ui/SidebarWireframe";
 
 interface PromptLibraryPageProps {
   onSelectPrompt: (queryText: string) => void;
@@ -143,6 +144,20 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({ onSelectPr
             </Card>
           );
         })}
+      </div>
+
+      {/* Wireframe Inspector Section */}
+      <div className="pt-8 border-t border-[#232838] space-y-4">
+        <div>
+          <h2 className="text-xl font-extrabold text-white tracking-tight font-sans flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-[#6E6BFF]" /> Application Sidebar Navigation Wireframe
+          </h2>
+          <p className="text-xs text-[#8A90A6] font-mono mt-1">
+            Responsive TypeUI split layout with 5 primary nav items, divider, 2 utility footer items, diagonal-stripe viewport pattern, and canvas guides.
+          </p>
+        </div>
+
+        <SidebarWireframe />
       </div>
 
     </div>

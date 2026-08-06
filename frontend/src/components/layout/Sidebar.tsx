@@ -5,9 +5,6 @@ import {
   MessageSquare, 
   Sparkles, 
   Settings, 
-  Globe, 
-  BookOpen,
-  Layers,
   ChevronRight,
   Code2
 } from "lucide-react";
@@ -23,38 +20,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
   const navItems = [
     { id: "dashboard" as NavigationTab, label: "Dashboard", icon: LayoutDashboard },
     { id: "library" as NavigationTab, label: "Document Library", icon: FolderKanban },
-    { id: "chat" as NavigationTab, label: "Iris RAG Chat", icon: MessageSquare },
-    { id: "prompts" as NavigationTab, label: "Iris View", icon: Sparkles },
-    { id: "docs" as NavigationTab, label: "Architecture & Docs", icon: BookOpen },
-    { id: "settings" as NavigationTab, label: "Settings", icon: Settings },
-    { id: "landing" as NavigationTab, label: "Landing Preview", icon: Globe }
+    { id: "chat" as NavigationTab, label: "AI Chat Console", icon: MessageSquare },
+    { id: "prompts" as NavigationTab, label: "AI Views & Tools", icon: Sparkles },
+    { id: "settings" as NavigationTab, label: "Settings", icon: Settings }
   ];
 
   return (
-    <aside className="w-[280px] bg-white dark:bg-slate-950 border-r border-[#E7E9F3] dark:border-slate-800 flex flex-col justify-between p-5 select-none shrink-0 transition-colors">
+    <aside className="w-[270px] bg-[#12151F] border-r border-[#232838] flex flex-col justify-between p-5 select-none shrink-0 text-[#EDEFF7] font-sans shadow-lg">
       <div>
-        {/* Brand Header */}
-        <div className="flex items-center gap-3 px-3 py-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-cyan-400 flex items-center justify-center text-white shadow-[0_4px_14px_rgba(139,92,246,0.25)]">
-            <Sparkles className="w-5 h-5 text-white" />
+        {/* Prominent Logo Lockup (Top-Left) */}
+        <div className="flex items-center gap-3.5 px-2 py-2 mb-6">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#6E6BFF] to-[#3FD0C9] text-white p-2 flex items-center justify-center shadow-md shrink-0">
+            <Sparkles className="w-5 h-5 fill-current text-white" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-lg tracking-tight text-[#1A1D2E] dark:text-white">
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-lg tracking-tight text-white font-sans">
                 Iris AI
               </span>
-              <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-[#6E6BFF]/10 text-[#6E6BFF] border border-[#6E6BFF]/20">
                 PRO
               </span>
             </div>
-            <p className="text-[11px] text-[#6B7085] dark:text-slate-400 font-mono">Intelligent Platform</p>
+            <p className="text-[11px] text-[#8A90A6]">AI Document Assistant</p>
           </div>
         </div>
 
         {/* Navigation Section */}
-        <div className="space-y-1.5">
-          <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-[#A0A4B8] dark:text-slate-500 mb-2.5 font-mono">
-            Iris Menu
+        <div className="space-y-1">
+          <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-[#5A6078] mb-2 font-mono">
+            Navigation Menu
           </div>
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -64,52 +59,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all relative overflow-hidden ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs font-semibold transition-all duration-150 relative ${
                   isActive
-                    ? "bg-[#F0EBFC] dark:bg-purple-950/40 text-[#8B5CF6] dark:text-purple-300 shadow-sm"
-                    : "text-[#6B7085] dark:text-slate-400 hover:text-[#1A1D2E] dark:hover:text-slate-200 hover:bg-[#F0F1F8] dark:hover:bg-slate-900/60"
+                    ? "bg-[#6E6BFF]/10 text-[#6E6BFF] border-l-2 border-[#6E6BFF] font-bold shadow-sm"
+                    : "text-[#8A90A6] hover:text-white hover:bg-[#1A1E2B]"
                 }`}
               >
-                {/* Active Pill 3px Gradient Left Border Indicator */}
-                {isActive && (
-                  <span className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-purple-600 to-cyan-500 rounded-r" />
-                )}
-
-                <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? "text-[#8B5CF6] dark:text-cyan-400" : "text-[#A0A4B8] dark:text-slate-500"}`} />
+                <div className="flex items-center gap-2.5 truncate">
+                  <Icon className={`w-4 h-4 ${isActive ? "text-[#6E6BFF]" : "text-[#8A90A6]"}`} />
                   <span className="truncate">{item.label}</span>
                 </div>
 
-                {isActive && <ChevronRight className="w-3.5 h-3.5 text-[#8B5CF6] dark:text-purple-400 shrink-0" />}
+                {isActive && <ChevronRight className="w-3.5 h-3.5 text-[#6E6BFF] shrink-0" />}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Footer Area: Vector Core Pill & About Developer Button */}
-      <div className="space-y-2.5 pt-4">
-        <div className="p-3.5 rounded-2xl bg-[#F8F9FC] dark:bg-slate-900/80 border border-[#E7E9F3] dark:border-slate-800 space-y-1.5">
-          <div className="flex items-center justify-between text-xs font-mono">
-            <span className="text-[#6B7085] dark:text-slate-400 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-[#06B6D4]" /> Iris Vector Core
-            </span>
-            <span className="text-[#10B981] font-bold flex items-center gap-1 text-[11px]">
-              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" /> Active
-            </span>
-          </div>
-          <div className="text-[10px] text-[#A0A4B8] dark:text-slate-500 font-mono">
-            Vector DB: Chroma / FAISS Local
-          </div>
-        </div>
-
-        {/* Small About Developer Button */}
+      {/* Footer Area: Developer Specs Button */}
+      <div className="pt-4 border-t border-[#232838]">
         {onOpenAboutDeveloper && (
           <button
             onClick={onOpenAboutDeveloper}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-[#8B5CF6] dark:text-purple-300 border border-purple-500/20 text-xs font-mono font-bold transition-all shadow-sm active:scale-98"
+            className="w-full py-2.5 px-3 rounded-2xl bg-[#1A1E2B] border border-[#232838] hover:border-[#6E6BFF]/40 text-[#8A90A6] hover:text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm"
           >
-            <Code2 className="w-3.5 h-3.5" /> About Developer
+            <Code2 size={14} className="text-[#6E6BFF]" />
+            <span>Developer Specs</span>
           </button>
         )}
       </div>

@@ -1,3 +1,5 @@
+FRONTEND:
+
 cd C:\Users\jaswa\.gemini\antigravity\scratch\documind-ai\frontend
 
 npm install
