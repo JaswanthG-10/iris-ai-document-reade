@@ -1,22 +1,23 @@
-import math
 import logging
 from typing import List, Dict, Any, Optional
-from app.core.config import settings
-from app.services.embedding_service import EmbeddingService, RerankerService
+
+from app.services.embedding_service import EmbeddingService
 from app.services.vector_service import VectorService
 
 logger = logging.getLogger("documind")
 
-class RetrievalService:
-    """Service handling multi-stage document retrieval (Bi-Encoder search + Cross-Encoder rerank)."""
 
-    @classmethod
-    def sigmoid(cls, x: float) -> float:
-        """Converts raw reranker model logits into normalized similarity scores [0.0, 1.0]."""
-        try:
-            return 1.0 / (1.0 + math.exp(-x))
-        except OverflowError:
-            return 0.0 if x < 0 else 1.0
+class RetrievalService:
+    """
+    Lightweight document retrieval service.
+
+    Uses:
+    1. Gemini embeddings for query embedding
+    2. ChromaDB/vector similarity for retrieval
+    3. No local CrossEncoder reranking
+
+    This keeps the backend lightweight enough for serverless deployment.
+    """
 
     @classmethod
     def retrieve_context(
@@ -27,64 +28,135 @@ class RetrievalService:
         top_k: int = 5,
         similarity_threshold: float = 0.15
     ) -> List[Dict[str, Any]]:
-        """Retrieves and ranks the most relevant document chunks matching a user query.
-        
-        Applies tenant isolation filters, vector search, score thresholds, and optional cross-encoder reranking.
         """
-        # 1. Embed user query using local Bi-Encoder model
-        logger.info(f"Retrieving context for query: '{query}' (Tenant: {user_id})")
-        query_embedding = EmbeddingService.embed_text(query)
+        Retrieve the most relevant document chunks for a query.
 
-        # 2. Query persistent vector database (retrieve 2x top_k to feed the reranker stage)
-        candidate_count = top_k * 2 if settings.RERANKING_ENABLED else top_k
-        candidates = VectorService.query_chunks(
-            user_id=user_id,
-            query_embedding=query_embedding,
-            selected_doc_ids=selected_doc_ids,
-            top_k=candidate_count
+        The ranking is based entirely on vector similarity.
+        """
+
+        logger.info(
+            f"Retrieving context for query: '{query}' "
+            f"(Tenant: {user_id})"
         )
 
-        if not candidates:
-            logger.info("No text candidates returned from vector database.")
+        # ---------------------------------------------------------
+        # 1. Generate query embedding
+        # ---------------------------------------------------------
+        try:
+            query_embedding = EmbeddingService.embed_text(query)
+        except Exception as e:
+            logger.error(
+                f"Query embedding failed: {str(e)}",
+                exc_info=True
+            )
+            raise
+
+        if not query_embedding:
+            logger.warning("Empty query embedding returned.")
             return []
 
-        # 3. Stage 2: Cross-Encoder Reranking (optional and modular)
-        if settings.RERANKING_ENABLED and len(candidates) > 1:
-            try:
-                logger.info(f"Reranking {len(candidates)} candidates using CrossEncoder...")
-                passages = [c["content"] for c in candidates]
-                raw_scores = RerankerService.rerank(query, passages)
+        # ---------------------------------------------------------
+        # 2. Vector search
+        # ---------------------------------------------------------
+        try:
+            candidates = VectorService.query_chunks(
+                user_id=user_id,
+                query_embedding=query_embedding,
+                selected_doc_ids=selected_doc_ids,
+                top_k=top_k
+            )
+        except Exception as e:
+            logger.error(
+                f"Vector search failed: {str(e)}",
+                exc_info=True
+            )
+            raise
 
-                # Update candidate scores with normalized sigmoid probabilities
-                for idx, score in enumerate(raw_scores):
-                    candidates[idx]["relevance_score"] = cls.sigmoid(score)
+        if not candidates:
+            logger.info(
+                "No text candidates returned from vector database."
+            )
+            return []
 
-                # Sort by updated scores descending
-                candidates.sort(key=lambda c: c["relevance_score"], reverse=True)
-            except Exception as e:
-                logger.warning(f"Reranking failed, falling back to original vector scores: {str(e)}")
+        # ---------------------------------------------------------
+        # 3. Ensure candidates have a relevance score
+        # ---------------------------------------------------------
+        for candidate in candidates:
+            if "relevance_score" not in candidate:
+                # Try common score field names used by vector stores.
+                if "similarity" in candidate:
+                    candidate["relevance_score"] = float(
+                        candidate["similarity"]
+                    )
+                elif "score" in candidate:
+                    candidate["relevance_score"] = float(
+                        candidate["score"]
+                    )
+                elif "distance" in candidate:
+                    # Lower distance = better match.
+                    candidate["relevance_score"] = 1.0 / (
+                        1.0 + float(candidate["distance"])
+                    )
+                else:
+                    # If VectorService doesn't provide a score,
+                    # retain the candidate rather than crashing.
+                    candidate["relevance_score"] = 1.0
 
-        # 4. Filter by similarity threshold
+        # ---------------------------------------------------------
+        # 4. Sort using vector similarity
+        # ---------------------------------------------------------
+        candidates.sort(
+            key=lambda c: c.get("relevance_score", 0.0),
+            reverse=True
+        )
+
+        # ---------------------------------------------------------
+        # 5. Apply similarity threshold
+        # ---------------------------------------------------------
         filtered_results = [
-            c for c in candidates 
-            if c["relevance_score"] >= similarity_threshold
+            candidate
+            for candidate in candidates
+            if candidate.get("relevance_score", 0.0)
+            >= similarity_threshold
         ]
 
-        # Resilient Fallback: If strict threshold filtered out all candidates and threshold is reasonable (< 0.5), use top candidates
-        if not filtered_results and candidates and similarity_threshold < 0.5:
-            logger.info(f"Threshold >= {similarity_threshold} returned 0 items; falling back to top {top_k} candidates.")
+        # ---------------------------------------------------------
+        # 6. Resilient fallback
+        # ---------------------------------------------------------
+        if not filtered_results and candidates:
+            logger.info(
+                f"No candidates passed similarity threshold "
+                f"{similarity_threshold}. "
+                f"Using top {top_k} candidates as fallback."
+            )
+
             filtered_results = candidates[:top_k]
 
-        logger.info(f"Retrieved {len(filtered_results)} chunks for query context.")
-
-        # 5. Deduplicate identical text passages
+        # ---------------------------------------------------------
+        # 7. Remove duplicate content
+        # ---------------------------------------------------------
         seen_contents = set()
         deduplicated = []
-        for c in filtered_results:
-            normalized_content = c["content"].strip().lower()
+
+        for candidate in filtered_results:
+            content = candidate.get("content", "")
+
+            normalized_content = content.strip().lower()
+
+            if not normalized_content:
+                continue
+
             if normalized_content not in seen_contents:
                 seen_contents.add(normalized_content)
-                deduplicated.append(c)
+                deduplicated.append(candidate)
 
-        # 6. Slice to final requested top_k limit
-        return deduplicated[:top_k]
+        # ---------------------------------------------------------
+        # 8. Return final results
+        # ---------------------------------------------------------
+        results = deduplicated[:top_k]
+
+        logger.info(
+            f"Retrieved {len(results)} chunks for query context."
+        )
+
+        return results
