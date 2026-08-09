@@ -121,9 +121,8 @@ class RetrievalService:
         ]
 
         # ---------------------------------------------------------
-        # 6. Resilient fallback
-        # ---------------------------------------------------------
-        if not filtered_results and candidates:
+        # 6. Resilient fallback (only for normal/default thresholds)
+        if not filtered_results and candidates and similarity_threshold < 0.85:
             logger.info(
                 f"No candidates passed similarity threshold "
                 f"{similarity_threshold}. "
