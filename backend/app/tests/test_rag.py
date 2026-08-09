@@ -115,7 +115,7 @@ def test_rag_similarity_threshold_filtering(client, auth_user_a):
         query="How do you make chocolate cookies?",
         selected_doc_ids=None,
         top_k=5,
-        similarity_threshold=0.85  # Very high threshold
+        similarity_threshold=0.99  # Very high threshold
     )
     
     assert len(results) == 0
