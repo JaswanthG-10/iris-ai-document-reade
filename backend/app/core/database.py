@@ -17,11 +17,24 @@ engine = create_engine(
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+_tables_created = False
+
+def ensure_tables_exist():
+    global _tables_created
+    if not _tables_created:
+        try:
+            from app.models.base import Base
+            Base.metadata.create_all(bind=engine)
+            _tables_created = True
+        except Exception:
+            pass
+
 def get_db() -> Generator:
     """Dependency injection helper for database sessions.
     
     Yields a database session and closes it when the request completes.
     """
+    ensure_tables_exist()
     db = SessionLocal()
     try:
         yield db

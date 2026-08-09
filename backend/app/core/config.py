@@ -76,10 +76,16 @@ class Settings(BaseModel):
     # ---------------------------------------------------------
     # Gemini Embeddings
     # ---------------------------------------------------------
+    EMBEDDING_MODEL_NAME: str = Field(
+        default_factory=lambda: os.getenv(
+            "EMBEDDING_MODEL_NAME",
+            "text-embedding-004",
+        )
+    )
     GEMINI_EMBEDDING_MODEL: str = Field(
         default_factory=lambda: os.getenv(
             "GEMINI_EMBEDDING_MODEL",
-            "gemini-embedding-2",
+            "text-embedding-004",
         )
     )
 

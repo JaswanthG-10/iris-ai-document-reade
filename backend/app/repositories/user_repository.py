@@ -28,3 +28,11 @@ class UserRepository:
         db.commit()
         db.refresh(db_user)
         return db_user
+
+    @staticmethod
+    def update_password(db: Session, user: User, new_password: str) -> User:
+        """Updates user password hash."""
+        user.password_hash = hash_password(new_password)
+        db.commit()
+        db.refresh(user)
+        return user
