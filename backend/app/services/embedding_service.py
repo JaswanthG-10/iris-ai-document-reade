@@ -100,31 +100,26 @@ class EmbeddingService:
         if not texts:
             return []
 
-        # Remove empty strings while preserving valid content.
-        cleaned_texts = [
-            text.strip()
+        # Replace empty/whitespace strings with placeholder to ensure 1-to-1 length matching
+        safe_texts = [
+            text if (text and text.strip()) else "empty text passage"
             for text in texts
-            if text and text.strip()
         ]
-
-        if not cleaned_texts:
-            return []
 
         try:
             client = cls.get_client()
 
             result = client.models.embed_content(
                 model=settings.GEMINI_EMBEDDING_MODEL,
-                contents=cleaned_texts,
+                contents=safe_texts,
                 config=types.EmbedContentConfig(
                     output_dimensionality=768,
                 ),
             )
 
-            if not result.embeddings:
-                raise ValueError(
-                    "Gemini returned no embeddings."
-                )
+            if not result.embeddings or len(result.embeddings) != len(texts):
+                # Fallback to individual embeddings if batch count mismatches
+                return [cls.embed_text(t) for t in safe_texts]
 
             return [
                 list(embedding.values)
