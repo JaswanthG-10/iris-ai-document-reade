@@ -165,7 +165,21 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
     setMessages((prev) => [...prev, tempUserMsg]);
 
     try {
-      const reply = await chatApi.submitQuestion(targetConvId, userText, selectedDocIds);
+      let reply: Message;
+      try {
+        reply = await chatApi.submitQuestion(targetConvId, userText, selectedDocIds);
+      } catch (submitErr: any) {
+        if (submitErr.message && submitErr.message.includes("Conversation not found")) {
+          // Self-healing: create fresh conversation thread and retry
+          const freshChat = await chatApi.createConversation(`Analysis Session #${conversations.length + 1}`);
+          setConversations((prev) => [freshChat, ...prev]);
+          setActiveConvId(freshChat.id);
+          targetConvId = freshChat.id;
+          reply = await chatApi.submitQuestion(freshChat.id, userText, selectedDocIds);
+        } else {
+          throw submitErr;
+        }
+      }
       setMessages((prev) => [...prev.filter((m) => m.id !== tempUserMsg.id), tempUserMsg, reply]);
     } catch (err: any) {
       const errMsg: Message = {

@@ -155,6 +155,7 @@ const AppContent: React.FC = () => {
                     setActiveTab(tab as NavigationTab);
                     setSelectedDocId(null);
                   }}
+                  onUploadSuccess={fetchDocuments}
                 />
               ) : activeTab === "library" ? (
                 <DocumentLibraryPage

@@ -22,12 +22,14 @@ interface DashboardPageProps {
   onSelectDoc?: (id: number) => void;
   onNavigateToLibrary?: () => void;
   onNavigateTab?: (tab: string, query?: string) => void;
+  onUploadSuccess?: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   onSelectDoc,
   onNavigateToLibrary,
-  onNavigateTab
+  onNavigateTab,
+  onUploadSuccess
 }) => {
   const { user } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -345,6 +347,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           onClose={() => setUploadOpen(false)}
           onUploadSuccess={() => {
             fetchDashboardData();
+            if (onUploadSuccess) onUploadSuccess();
             setUploadOpen(false);
           }}
         />

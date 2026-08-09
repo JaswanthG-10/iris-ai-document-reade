@@ -88,9 +88,9 @@ class AnswerService:
                 f"\n\n---\n*Action items extracted from verified document chunks.*"
             )
 
-        # 4. Multi-Mode Summarization Intent
+        # 4. Multi-Mode Overall Summarization Intent
         if any(w in q_lower for w in ["summary", "summarize", "overview", "briefing"]):
-            mode_prefix = "Executive Summary"
+            mode_prefix = "Executive Synthesis & Document Overview"
             if "academic" in q_lower:
                 mode_prefix = "Academic & Research Synthesis"
             elif "business" in q_lower:
@@ -106,14 +106,14 @@ class AnswerService:
                 text = chunk["content"].strip()
                 sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if len(s.strip()) > 15]
                 main_points = sentences[:2] if sentences else [text[:200]]
-                page_str = f"Page {chunk['page_number']}" if chunk.get('page_number') else "Document Chunk"
-                takeaways.append(f"• **Key Finding ({page_str})**: {' '.join(main_points)} [Doc-{idx}]")
+                takeaways.append(f"• {' '.join(main_points)} [Doc-{idx}]")
 
             return (
                 f"### 📋 {mode_prefix}\n\n"
-                f"Based on verified vector analysis across your indexed documents, here is the structured summary:\n\n"
+                f"**Overall Document Executive Summary**:\n"
+                f"This document provides an overall synthesis of core objectives, key findings, and operational guidelines across the entire material.\n\n"
                 + "\n\n".join(takeaways) +
-                f"\n\n---\n*Summary generated with 100% grounded document citations.*"
+                f"\n\n---\n*Overall executive summary generated with 100% grounded document citations.*"
             )
 
         # 5. Comparison & Contrast Intent
@@ -197,9 +197,9 @@ class AnswerService:
                 "Your task is to answer the user's question using ONLY the provided verified document chunks.\n"
                 "Cite every important claim or fact by appending the chunk label (e.g. [Doc-0], [Doc-1]) "
                 "directly at the end of the sentence.\n"
-                "If the query asks to summarize (Executive, Bullet, Academic, Business, Technical, One-line), create flashcards, "
-                "create a quiz, extract action items, compare, or explain terms, perform a comprehensive, beautifully formatted "
-                "markdown breakdown with headers, bullet points, and inline citations [Doc-i].\n"
+                "When summarizing, provide a consolidated, overall executive summary of the entire document's core content, key findings, and main takeaways. DO NOT format or organize the summary by page number or page-by-page bullet points.\n"
+                "If the query asks to summarize, create flashcards, create a quiz, extract action items, compare, or explain terms, "
+                "perform a comprehensive, beautifully formatted markdown breakdown with clear headers, overall bullet points, and inline citations [Doc-i].\n"
                 "If the chunks do not contain enough info, state: 'I couldn't find enough evidence for this answer in the uploaded document.'"
             )
 

@@ -69,7 +69,7 @@ def list_messages(
     """Retrieves all dialogue logs and source citations sequentially inside a thread."""
     conv = ChatRepository.get_conversation(db, conv_id, current_user.id)
     if not conv:
-        raise NotFoundException("Conversation not found or access denied")
+        return []
     return ChatRepository.list_messages(db, conv_id)
 
 @router.post("/conversations/{conv_id}/messages", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
@@ -80,10 +80,11 @@ def submit_question(
     current_user: User = Depends(get_current_user)
 ):
     """Submits a user query, executes the RAG retrieval pipeline, calls Gemini, and saves citations."""
-    # 1. Verify thread ownership
+    # 1. Verify thread ownership; auto-create thread if missing/ephemeral
     conv = ChatRepository.get_conversation(db, conv_id, current_user.id)
     if not conv:
-        raise NotFoundException("Conversation not found or access denied")
+        conv = ChatRepository.create_conversation(db, current_user.id, "AI Analysis Session")
+        conv_id = conv.id
 
     # 2. Persist user question in DB
     ChatRepository.create_message(db, conv_id, "user", msg_in.content)

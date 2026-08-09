@@ -187,6 +187,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
 
     try {
       await docApi.upload(file);
+      onUploadSuccess();
       // Trigger dissolve animation phase
       setUploadStatus("dissolving");
     } catch (err: any) {
