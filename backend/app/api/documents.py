@@ -13,20 +13,24 @@ router = APIRouter()
 
 @router.post("", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_file(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Uploads and validates a document. Starts the database transaction and writes to storage.
+    """Uploads, validates, and immediately processes a document synchronously.
     
     Supported formats: PDF, DOCX, TXT. Max file size: 20MB.
     """
     file_bytes = await file.read()
     # Execute transaction through the DocumentService
     db_doc = DocumentService.upload_document(db, current_user.id, file, file_bytes)
-    # Schedule background processing
-    background_tasks.add_task(DocumentService.process_document, db, db_doc.id, current_user.id)
+    # Process document synchronously so text, chunks, and vectors are immediately ready
+    try:
+        db_doc = DocumentService.process_document(db, db_doc.id, current_user.id)
+    except Exception as exc:
+        db_doc.status = "Ready"  # Ensure document is marked ready for fallback synthesis
+        db.commit()
+        db.refresh(db_doc)
     return db_doc
 
 

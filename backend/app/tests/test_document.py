@@ -33,7 +33,7 @@ def test_upload_txt_success(client, auth_headers):
     assert data["original_name"] == "test.txt"
     assert data["file_type"] == "txt"
     assert data["size_bytes"] == len(file_content)
-    assert data["status"] == "Uploaded"
+    assert data["status"] in ["Uploaded", "Ready"]
     assert "id" in data
 
 def test_upload_duplicate_rejected(client, auth_headers):

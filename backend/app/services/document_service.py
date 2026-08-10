@@ -180,7 +180,6 @@ class DocumentService:
             DocumentRepository.update_processing_job(db, job_id, "Completed")
 
             
-            # Finalize pipeline
             DocumentRepository.update_status(db, doc.id, "Ready", page_count=page_count)
             logger.info(f"Pipeline completed successfully for document {doc.id}.")
 
@@ -189,6 +188,8 @@ class DocumentService:
             DocumentRepository.update_status(db, doc_id, "Failed", error_message=str(e))
             if job_id:
                 DocumentRepository.update_processing_job(db, job_id, "Failed", error_message=str(e))
+
+        return DocumentRepository.get_by_id(db, doc_id, user_id)
 
     @classmethod
     def delete_document(cls, db: Session, doc_id: int, user_id: int) -> bool:

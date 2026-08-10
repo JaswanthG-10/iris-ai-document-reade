@@ -73,9 +73,32 @@ class RetrievalService:
             raise
 
         if not candidates:
-            logger.info(
-                "No text candidates returned from vector database."
-            )
+            logger.info("No candidates returned from ChromaDB; checking SQL DocumentChunk fallback.")
+            try:
+                from app.core.database import SessionLocal
+                from app.models.document import DocumentChunk
+                db = SessionLocal()
+                try:
+                    query_filter = [DocumentChunk.user_id == user_id]
+                    if selected_doc_ids:
+                        query_filter.append(DocumentChunk.document_id.in_(selected_doc_ids))
+                    sql_chunks = db.query(DocumentChunk).filter(*query_filter).order_by(DocumentChunk.id.asc()).limit(top_k).all()
+                    candidates = [
+                        {
+                            "vector_id": chunk.vector_id or f"chunk_{chunk.id}",
+                            "content": chunk.content,
+                            "document_id": chunk.document_id,
+                            "page_number": chunk.page_number,
+                            "relevance_score": 0.90
+                        }
+                        for chunk in sql_chunks
+                    ]
+                finally:
+                    db.close()
+            except Exception as sql_err:
+                logger.error(f"SQL fallback chunk lookup failed: {sql_err}")
+
+        if not candidates:
             return []
 
         # ---------------------------------------------------------

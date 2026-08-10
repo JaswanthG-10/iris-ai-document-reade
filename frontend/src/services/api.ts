@@ -2,9 +2,14 @@ import type { User, Document, Conversation, Message } from "../types";
 
 // Keep browser requests on the same origin. Vite proxies this path during
 // development and Nginx proxies it in the production container.
-const BASE_URL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api/v1`
-  : "/api/v1";
+const getApiBaseUrl = () => {
+  const rawUrl = import.meta.env.VITE_API_URL || "";
+  if (!rawUrl || rawUrl.trim() === "") return "/api/v1";
+  const cleanUrl = rawUrl.trim().replace(/\/+$/, "");
+  return cleanUrl.endsWith("/api/v1") ? cleanUrl : `${cleanUrl}/api/v1`;
+};
+
+const BASE_URL = getApiBaseUrl();
 
 async function apiRequest<T>(path: string, options: RequestInit = {}, retries = 2, delay = 1000): Promise<T> {
   try {
@@ -20,7 +25,8 @@ async function apiRequest<T>(path: string, options: RequestInit = {}, retries = 
       headers.set("Content-Type", "application/json");
     }
 
-    const response = await fetch(`${BASE_URL}${path}`, {
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    const response = await fetch(`${BASE_URL}${cleanPath}`, {
       ...options,
       headers
     });
