@@ -72,6 +72,8 @@ class RetrievalService:
             )
             raise
 
+        is_summary_query = any(w in query.lower() for w in ["summary", "summarize", "overview", "briefing", "extract", "explain"])
+
         if selected_doc_ids and len(selected_doc_ids) > 0:
             candidates = [c for c in candidates if c.get("document_id") in selected_doc_ids]
 
