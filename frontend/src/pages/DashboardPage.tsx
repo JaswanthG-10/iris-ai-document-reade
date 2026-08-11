@@ -77,15 +77,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* 1. WELCOME HERO BANNER */}
       <motion.div
         variants={itemVariants}
-        className="p-8 rounded-3xl bg-[#12151F]/90 backdrop-blur-xl border border-[#232838] shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden group"
+        className="p-8 rounded-3xl bg-[#12151F] border border-[#232838] shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden group"
       >
-        {/* Animated Glow Core */}
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.3, 0.15] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-10 -right-10 w-96 h-96 rounded-full bg-gradient-to-br from-[#6E6BFF]/20 via-[#3FD0C9]/10 to-transparent blur-3xl pointer-events-none"
-        />
-
         <div className="space-y-3 max-w-2xl relative z-10">
           <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#6E6BFF]/10 text-[#6E6BFF] text-xs font-semibold border border-[#6E6BFF]/30 shadow-sm">
             <Sparkles className="w-3.5 h-3.5 animate-pulse" /> AI Document Workspace
@@ -101,8 +94,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         <motion.button
-          whileHover={{ scale: 1.04, y: -2 }}
-          whileTap={{ scale: 0.96 }}
+          whileHover={{ scale: 1.03, y: -1 }}
+          whileTap={{ scale: 0.97 }}
           onClick={() => setUploadOpen(true)}
           className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#6E6BFF] to-[#3FD0C9] text-white font-bold text-xs sm:text-sm flex items-center gap-2.5 shadow-lg shadow-indigo-500/25 shrink-0 hover:shadow-indigo-500/40 transition-all relative z-10"
         >
@@ -124,14 +117,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <motion.div
               key={idx}
               variants={itemVariants}
-              whileHover={{ scale: 1.03, y: -4 }}
-              transition={{ type: "spring", stiffness: 350, damping: 25 }}
-              className="p-6 rounded-2xl bg-[#12151F]/90 backdrop-blur-xl border border-[#232838] hover:border-[#6E6BFF]/40 shadow-xl space-y-3 relative group overflow-hidden"
+              whileHover={{ scale: 1.02, y: -2 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="p-6 rounded-2xl bg-[#12151F] border border-[#232838] hover:border-[#6E6BFF]/40 shadow-lg space-y-3 relative group overflow-hidden"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-[#8A90A6]">{stat.label}</span>
                 <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center p-2 rounded-lg"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center p-2"
                   style={{ backgroundColor: `${stat.color}15`, color: stat.color }}
                 >
                   <Icon className="w-4 h-4" />
