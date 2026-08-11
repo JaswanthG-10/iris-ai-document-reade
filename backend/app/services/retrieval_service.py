@@ -72,9 +72,10 @@ class RetrievalService:
             )
             raise
 
-        is_summary_query = any(w in query.lower() for w in ["summary", "summarize", "overview", "briefing", "extract", "explain"])
+        if selected_doc_ids and len(selected_doc_ids) > 0:
+            candidates = [c for c in candidates if c.get("document_id") in selected_doc_ids]
 
-        if not candidates or is_summary_query or len(candidates) < 3:
+        if not candidates or is_summary_query:
             logger.info("Fetching SQL DocumentChunk fallback to ensure comprehensive evidence.")
             try:
                 from app.core.database import SessionLocal
@@ -106,6 +107,9 @@ class RetrievalService:
                     db.close()
             except Exception as sql_err:
                 logger.error(f"SQL fallback chunk lookup failed: {sql_err}")
+
+        if selected_doc_ids and len(selected_doc_ids) > 0:
+            candidates = [c for c in candidates if c.get("document_id") in selected_doc_ids]
 
         if not candidates:
             return []
