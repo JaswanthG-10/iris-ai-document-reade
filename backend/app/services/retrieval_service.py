@@ -72,27 +72,36 @@ class RetrievalService:
             )
             raise
 
-        if not candidates:
-            logger.info("No candidates returned from ChromaDB; checking SQL DocumentChunk fallback.")
+        is_summary_query = any(w in query.lower() for w in ["summary", "summarize", "overview", "briefing", "extract", "explain"])
+
+        if not candidates or is_summary_query or len(candidates) < 3:
+            logger.info("Fetching SQL DocumentChunk fallback to ensure comprehensive evidence.")
             try:
                 from app.core.database import SessionLocal
                 from app.models.document import DocumentChunk
                 db = SessionLocal()
                 try:
-                    query_filter = [DocumentChunk.user_id == user_id]
-                    if selected_doc_ids:
+                    query_filter = []
+                    if selected_doc_ids and len(selected_doc_ids) > 0:
                         query_filter.append(DocumentChunk.document_id.in_(selected_doc_ids))
-                    sql_chunks = db.query(DocumentChunk).filter(*query_filter).order_by(DocumentChunk.id.asc()).limit(top_k).all()
-                    candidates = [
-                        {
-                            "vector_id": chunk.vector_id or f"chunk_{chunk.id}",
-                            "content": chunk.content,
-                            "document_id": chunk.document_id,
-                            "page_number": chunk.page_number,
-                            "relevance_score": 0.90
-                        }
-                        for chunk in sql_chunks
-                    ]
+                    else:
+                        query_filter.append((DocumentChunk.user_id == user_id) | (DocumentChunk.user_id == 1))
+
+                    fetch_limit = 25 if is_summary_query else max(top_k, 12)
+                    sql_chunks = db.query(DocumentChunk).filter(*query_filter).order_by(DocumentChunk.chunk_index.asc()).limit(fetch_limit).all()
+                    
+                    if sql_chunks:
+                        existing_ids = {c.get("vector_id") for c in candidates}
+                        for chunk in sql_chunks:
+                            v_id = chunk.vector_id or f"chunk_{chunk.id}"
+                            if v_id not in existing_ids:
+                                candidates.append({
+                                    "vector_id": v_id,
+                                    "content": chunk.content,
+                                    "document_id": chunk.document_id,
+                                    "page_number": chunk.page_number,
+                                    "relevance_score": 0.90
+                                })
                 finally:
                     db.close()
             except Exception as sql_err:

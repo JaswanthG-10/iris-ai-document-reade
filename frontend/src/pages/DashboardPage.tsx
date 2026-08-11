@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { docApi, chatApi } from "../services/api";
 import type { Document, Conversation } from "../types";
-
 import { UploadModal } from "../components/documents/UploadModal";
 import { 
   FileText, 
@@ -10,12 +10,10 @@ import {
   MessageSquare, 
   Sparkles, 
   Clock, 
-  Star, 
   HardDrive, 
   FileCheck, 
   ArrowRight,
-  TrendingUp,
-  Activity
+  TrendingUp
 } from "lucide-react";
 
 interface DashboardPageProps {
@@ -55,25 +53,46 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const readyDocs = documents.filter((d) => d.status === "Ready");
   const recentDocs = documents.slice(0, 4);
-  const favoriteDocs = documents.slice(0, 2);
-  const recentConvs = conversations.slice(0, 4);
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.08 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: { opacity: 1, y: 0 }
+  };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto p-6 font-sans select-none text-[#EDEFF7]">
-      
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-8 max-w-7xl mx-auto p-6 font-sans select-none text-[#EDEFF7] relative z-10"
+    >
       {/* 1. WELCOME HERO BANNER */}
-      <div className="p-8 rounded-3xl bg-[#12151F] border border-[#232838] shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
-        
-        {/* Background Ambient Orbs */}
-        <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-[#6E6BFF]/10 blur-3xl pointer-events-none" />
+      <motion.div
+        variants={itemVariants}
+        className="p-8 rounded-3xl bg-[#12151F]/90 backdrop-blur-xl border border-[#232838] shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden group"
+      >
+        {/* Animated Glow Core */}
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.3, 0.15] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-10 -right-10 w-96 h-96 rounded-full bg-gradient-to-br from-[#6E6BFF]/20 via-[#3FD0C9]/10 to-transparent blur-3xl pointer-events-none"
+        />
 
-        <div className="space-y-2 max-w-2xl relative z-10">
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#6E6BFF]/10 text-[#6E6BFF] text-xs font-semibold border border-[#6E6BFF]/20">
-            <Sparkles className="w-3.5 h-3.5" /> AI Document Workspace
+        <div className="space-y-3 max-w-2xl relative z-10">
+          <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#6E6BFF]/10 text-[#6E6BFF] text-xs font-semibold border border-[#6E6BFF]/30 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 animate-pulse" /> AI Document Workspace
           </span>
 
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Welcome back, <span className="text-[#6E6BFF]">{user?.name || "Architect"}</span>
+            Welcome back, <span className="bg-gradient-to-r from-[#6E6BFF] via-[#3FD0C9] to-white bg-clip-text text-transparent">{user?.name || "Architect"}</span>
           </h1>
 
           <p className="text-xs sm:text-sm text-[#8A90A6] leading-relaxed">
@@ -81,263 +100,149 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto relative z-10">
-          <button
-            onClick={() => setUploadOpen(true)}
-            className="w-full sm:w-auto py-3 px-6 rounded-2xl cta-indigo-btn text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
-          >
-            <Upload size={16} /> Upload Document
-          </button>
+        <motion.button
+          whileHover={{ scale: 1.04, y: -2 }}
+          whileTap={{ scale: 0.96 }}
+          onClick={() => setUploadOpen(true)}
+          className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#6E6BFF] to-[#3FD0C9] text-white font-bold text-xs sm:text-sm flex items-center gap-2.5 shadow-lg shadow-indigo-500/25 shrink-0 hover:shadow-indigo-500/40 transition-all relative z-10"
+        >
+          <Upload className="w-4 h-4" />
+          <span>Upload Document</span>
+        </motion.button>
+      </motion.div>
 
-          {onNavigateTab && (
-            <button
-              onClick={() => onNavigateTab("chat")}
-              className="w-full sm:w-auto py-3 px-6 rounded-2xl bg-[#1A1E2B] border border-[#232838] hover:border-[#6E6BFF] text-white font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
+      {/* 2. STATS CARDS GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {[
+          { label: "Total Indexed Documents", val: documents.length, icon: FileText, color: "#6E6BFF" },
+          { label: "Ready Knowledge Base", val: readyDocs.length, icon: FileCheck, color: "#3FD0C9" },
+          { label: "Active AI Chat Threads", val: conversations.length, icon: MessageSquare, color: "#A855F7" },
+          { label: "Knowledge Core Storage", val: `${(documents.reduce((acc, d) => acc + d.size_bytes, 0) / (1024 * 1024)).toFixed(1)} MB`, icon: HardDrive, color: "#3B82F6" }
+        ].map((stat, idx) => {
+          const Icon = stat.icon;
+          return (
+            <motion.div
+              key={idx}
+              variants={itemVariants}
+              whileHover={{ scale: 1.03, y: -4 }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              className="p-6 rounded-2xl bg-[#12151F]/90 backdrop-blur-xl border border-[#232838] hover:border-[#6E6BFF]/40 shadow-xl space-y-3 relative group overflow-hidden"
             >
-              <MessageSquare size={16} className="text-[#6E6BFF]" /> Open Chat Console
-            </button>
-          )}
-        </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#8A90A6]">{stat.label}</span>
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center p-2 rounded-lg"
+                  style={{ backgroundColor: `${stat.color}15`, color: stat.color }}
+                >
+                  <Icon className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="flex items-baseline justify-between">
+                <p className="text-2xl font-black text-white tracking-tight">{stat.val}</p>
+                <span className="text-[11px] font-mono text-[#3FD0C9] flex items-center gap-0.5">
+                  <TrendingUp size={11} /> +100%
+                </span>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
-      {/* 2. STATS OVERVIEW CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-[#12151F] border border-[#232838] shadow-lg space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#8A90A6]">Total Documents</span>
-            <div className="p-2 rounded-xl bg-[#6E6BFF]/10 text-[#6E6BFF]">
-              <FileText size={16} />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-white">{documents.length}</p>
-          <p className="text-[11px] text-[#8A90A6]">{readyDocs.length} Ready for AI search</p>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-[#12151F] border border-[#232838] shadow-lg space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#8A90A6]">Today's Processing</span>
-            <div className="p-2 rounded-xl bg-[#3ECF8E]/10 text-[#3ECF8E]">
-              <FileCheck size={16} />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-white">{readyDocs.length}</p>
-          <p className="text-[11px] text-[#3ECF8E] font-semibold flex items-center gap-1">
-            <TrendingUp size={12} /> 100% Success Rate
-          </p>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-[#12151F] border border-[#232838] shadow-lg space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#8A90A6]">Recent Chat Threads</span>
-            <div className="p-2 rounded-xl bg-[#3FD0C9]/10 text-[#3FD0C9]">
-              <MessageSquare size={16} />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-white">{conversations.length}</p>
-          <p className="text-[11px] text-[#8A90A6]">Active AI conversations</p>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-[#12151F] border border-[#232838] shadow-lg space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#8A90A6]">Storage Usage</span>
-            <div className="p-2 rounded-xl bg-[#F5A524]/10 text-[#F5A524]">
-              <HardDrive size={16} />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-white">14.2 MB</p>
-          <p className="text-[11px] text-[#8A90A6]">250 MB Free Plan limit</p>
-        </div>
-      </div>
-
-      {/* 3. RECENT DOCUMENTS & QUICK UPLOADER GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 3. RECENT DOCUMENTS & QUICK PROMPTS GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Recent Documents Column (2 Cols) */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <FileText className="w-4 h-4 text-[#6E6BFF]" /> Recent Documents
+        {/* Left Column: Recent Documents */}
+        <motion.div variants={itemVariants} className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <Clock className="w-4 h-4 text-[#6E6BFF]" /> Recent Documents
             </h2>
             {onNavigateToLibrary && (
               <button
                 onClick={onNavigateToLibrary}
-                className="text-xs font-bold text-[#6E6BFF] hover:underline flex items-center gap-1"
+                className="text-xs font-semibold text-[#6E6BFF] hover:underline flex items-center gap-1"
               >
-                View All Library <ArrowRight size={13} />
+                View Library <ArrowRight size={13} />
               </button>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {recentDocs.length === 0 ? (
-              <div className="col-span-2 p-8 text-center border border-dashed border-[#232838] rounded-3xl space-y-2 bg-[#12151F]">
-                <FileText className="w-8 h-8 text-[#5A6078] mx-auto" />
-                <p className="text-xs font-bold text-white">No documents uploaded yet</p>
-                <p className="text-xs text-[#8A90A6]">Upload your first file to generate AI summaries and answer questions.</p>
+              <div className="sm:col-span-2 p-8 rounded-2xl bg-[#12151F]/80 border border-[#232838] text-center space-y-3">
+                <FileText className="w-8 h-8 text-[#5A6078] mx-auto animate-bounce" />
+                <p className="text-sm font-semibold text-[#8A90A6]">No documents uploaded yet</p>
+                <button
+                  onClick={() => setUploadOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-[#6E6BFF]/10 text-[#6E6BFF] border border-[#6E6BFF]/30 text-xs font-bold hover:bg-[#6E6BFF]/20 transition-all"
+                >
+                  Upload First PDF
+                </button>
               </div>
             ) : (
               recentDocs.map((doc) => (
-                <div
+                <motion.div
                   key={doc.id}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => onSelectDoc && onSelectDoc(doc.id)}
-                  className="p-5 rounded-3xl bg-[#12151F] border border-[#232838] hover:border-[#6E6BFF]/50 transition-all cursor-pointer space-y-3 shadow-lg group"
+                  className="p-5 rounded-2xl bg-[#12151F]/90 backdrop-blur-xl border border-[#232838] hover:border-[#6E6BFF]/40 shadow-lg cursor-pointer space-y-3 transition-all"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="p-2 rounded-xl bg-[#6E6BFF]/10 text-[#6E6BFF]">
-                      <FileText size={18} />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-[#6E6BFF]/10 text-[#6E6BFF] flex items-center justify-center shrink-0">
+                      <FileText size={16} />
                     </div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#3ECF8E]/10 text-[#3ECF8E] border border-[#3ECF8E]/20">
+                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                      doc.status === "Ready"
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                    }`}>
                       {doc.status}
                     </span>
                   </div>
 
                   <div>
-                    <h3 className="text-xs font-bold text-white group-hover:text-[#6E6BFF] transition-colors truncate" title={doc.display_name}>
-                      {doc.display_name}
-                    </h3>
-                    <p className="text-[11px] text-[#8A90A6] mt-0.5">
-                      {doc.page_count || 1} {doc.page_count === 1 ? "Page" : "Pages"} • {(doc.size_bytes ? doc.size_bytes / 1024 : 120).toFixed(0)} KB
-                    </p>
+                    <h3 className="text-sm font-bold text-white truncate">{doc.display_name}</h3>
+                    <p className="text-[11px] text-[#8A90A6]">{doc.file_type.toUpperCase()} • {(doc.size_bytes / 1024).toFixed(0)} KB</p>
                   </div>
-
-                  <div className="pt-2 border-t border-[#232838] flex items-center justify-between text-xs">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onNavigateTab) onNavigateTab("chat", `Summarize ${doc.display_name}`);
-                      }}
-                      className="text-[11px] font-semibold text-[#6E6BFF] hover:underline"
-                    >
-                      Generate Summary
-                    </button>
-                    <span className="text-[10px] text-[#5A6078] flex items-center gap-1">
-                      <Clock size={10} /> Recently added
-                    </span>
-                  </div>
-                </div>
+                </motion.div>
               ))
             )}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Quick Upload & Favorite Documents Column (1 Col) */}
-        <div className="space-y-6">
-          
-          {/* Quick Drag & Drop Upload Zone */}
-          <div className="p-6 rounded-3xl bg-[#12151F] border border-[#232838] shadow-lg space-y-4 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-[#6E6BFF]/10 text-[#6E6BFF] flex items-center justify-center mx-auto">
-              <Upload size={22} />
-            </div>
+        {/* Right Column: AI Views & Quick Tool Actions */}
+        <motion.div variants={itemVariants} className="space-y-4">
+          <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2 px-1">
+            <Sparkles className="w-4 h-4 text-[#3FD0C9]" /> AI Tool Launchpad
+          </h2>
 
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white">Quick Upload</h3>
-              <p className="text-xs text-[#8A90A6]">Drag & drop PDF or Word file to start AI analysis.</p>
-            </div>
+          <div className="p-6 rounded-3xl bg-[#12151F]/90 backdrop-blur-xl border border-[#232838] shadow-xl space-y-4">
+            <p className="text-xs text-[#8A90A6]">Instantly trigger document analysis pipelines:</p>
 
-            <button
-              onClick={() => setUploadOpen(true)}
-              className="w-full py-2.5 px-4 rounded-2xl cta-indigo-btn text-white font-bold text-xs shadow-md"
-            >
-              Choose File
-            </button>
-          </div>
-
-          {/* Favorite Pinned Documents */}
-          <div className="p-6 rounded-3xl bg-[#12151F] border border-[#232838] shadow-lg space-y-4">
-            <h3 className="text-xs font-bold text-[#5A6078] uppercase tracking-wider flex items-center gap-1.5 font-mono">
-              <Star size={13} className="text-[#F5A524] fill-[#F5A524]" /> Favorite Documents
-            </h3>
-
-            <div className="space-y-2">
-              {favoriteDocs.length === 0 ? (
-                <p className="text-xs text-[#8A90A6]">No pinned favorites.</p>
-              ) : (
-                favoriteDocs.map((doc) => (
-                  <div
-                    key={doc.id}
-                    onClick={() => onSelectDoc && onSelectDoc(doc.id)}
-                    className="p-3 rounded-2xl bg-[#1A1E2B] border border-[#232838] hover:border-[#6E6BFF]/50 transition-all cursor-pointer flex items-center justify-between text-xs"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <FileText size={14} className="text-[#6E6BFF] shrink-0" />
-                      <span className="truncate font-semibold text-white" title={doc.display_name}>
-                        {doc.display_name}
-                      </span>
-                    </div>
-                    <Star size={12} className="text-[#F5A524] fill-[#F5A524] shrink-0" />
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* 4. RECENT CHATS & AI INSIGHTS FEED */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Recent Chats Feed */}
-        <div className="p-6 rounded-3xl bg-[#12151F] border border-[#232838] shadow-lg space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <MessageSquare size={16} className="text-[#6E6BFF]" /> Recent AI Chats
-            </h3>
-            {onNavigateTab && (
-              <button
-                onClick={() => onNavigateTab("chat")}
-                className="text-xs font-bold text-[#6E6BFF] hover:underline"
+            {[
+              { label: "Executive Summary", query: "Summarize this document and present an executive summary.", icon: "📋" },
+              { label: "Key Action Items", query: "Extract all key action items, tasks, and responsibilities.", icon: "📋" },
+              { label: "Study Flashcards", query: "Generate interactive study flashcards from the text.", icon: "📇" },
+              { label: "Comprehension Quiz", query: "Create a 5-question comprehension quiz with answer keys.", icon: "🧪" }
+            ].map((tool, idx) => (
+              <motion.button
+                key={idx}
+                whileHover={{ scale: 1.02, x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onNavigateTab && onNavigateTab("chat", tool.query)}
+                className="w-full p-3 rounded-2xl bg-[#1A1E2B] border border-[#232838] hover:border-[#6E6BFF]/40 text-left flex items-center justify-between text-xs font-semibold text-[#EDEFF7] transition-all"
               >
-                Go to Chat Console
-              </button>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            {recentConvs.length === 0 ? (
-              <p className="text-xs text-[#8A90A6]">No chat conversations started yet.</p>
-            ) : (
-              recentConvs.map((conv) => (
-                <div
-                  key={conv.id}
-                  onClick={() => onNavigateTab && onNavigateTab("chat")}
-                  className="p-3.5 rounded-2xl bg-[#1A1E2B] border border-[#232838] hover:border-[#6E6BFF]/50 cursor-pointer transition-all flex items-center justify-between text-xs"
-                >
-                  <div className="flex items-center gap-2.5 truncate">
-                    <MessageSquare size={14} className="text-[#6E6BFF] shrink-0" />
-                    <span className="font-semibold text-white truncate">{conv.title}</span>
-                  </div>
-                  <span className="text-[10px] text-[#5A6078] shrink-0">Active Thread</span>
+                <div className="flex items-center gap-2.5">
+                  <span>{tool.icon}</span>
+                  <span>{tool.label}</span>
                 </div>
-              ))
-            )}
+                <ArrowRight size={13} className="text-[#6E6BFF]" />
+              </motion.button>
+            ))}
           </div>
-        </div>
-
-        {/* AI Recent Activity Log */}
-        <div className="p-6 rounded-3xl bg-[#12151F] border border-[#232838] shadow-lg space-y-4">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Activity size={16} className="text-[#3ECF8E]" /> Recent AI Activity
-          </h3>
-
-          <div className="space-y-3 text-xs">
-            <div className="flex items-start gap-3 p-3 rounded-2xl bg-[#1A1E2B] border border-[#232838]">
-              <div className="w-2 h-2 rounded-full bg-[#3ECF8E] mt-1.5 shrink-0" />
-              <div>
-                <p className="font-semibold text-white">Document Ingestion Completed</p>
-                <p className="text-[11px] text-[#8A90A6]">CSE-to-AIML-Comeback-Roadmap.pdf processed with 100% text accuracy.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-3 rounded-2xl bg-[#1A1E2B] border border-[#232838]">
-              <div className="w-2 h-2 rounded-full bg-[#6E6BFF] mt-1.5 shrink-0" />
-              <div>
-                <p className="font-semibold text-white">Executive Summary Generated</p>
-                <p className="text-[11px] text-[#8A90A6]">AI generated structured section breakdown for System-Design-Spec.pdf.</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        </motion.div>
 
       </div>
 
@@ -352,8 +257,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           }}
         />
       )}
-    </div>
+    </motion.div>
   );
 };
-
-export default DashboardPage;

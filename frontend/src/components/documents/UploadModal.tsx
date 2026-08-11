@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Upload, X, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
+import confetti from "canvas-confetti";
 import { docApi } from "../../services/api";
 
 interface UploadModalProps {
@@ -137,6 +138,14 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
       // 3. Transition to success screen once all particles dissolve
       if (activeParticles === 0 || framesElapsed > 180) {
         setUploadStatus("success");
+        try {
+          confetti({
+            particleCount: 70,
+            spread: 60,
+            origin: { y: 0.65 },
+            colors: ["#6E6BFF", "#00E5FF", "#A855F7", "#3B82F6"]
+          });
+        } catch (_) {}
       } else {
         animationRef.current = requestAnimationFrame(draw);
       }

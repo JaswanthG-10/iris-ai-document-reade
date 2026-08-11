@@ -15,6 +15,7 @@ import { TopHeader } from "./components/layout/TopHeader";
 import { CommandPalette } from "./components/ui/DesignSystem";
 import { UploadModal } from "./components/documents/UploadModal";
 import { AboutDeveloperModal } from "./components/ui/AboutDeveloperModal";
+import { NeuralBackground } from "./components/ui/NeuralBackground";
 import { docApi } from "./services/api";
 import type { Document, NavigationTab } from "./types";
 
@@ -107,7 +108,8 @@ const AppContent: React.FC = () => {
   const selectedDocument = documents.find((d) => d.id === selectedDocId);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
+    <div className="flex h-screen w-screen bg-[#0A0D14] font-sans text-slate-100 overflow-hidden relative">
+      <NeuralBackground />
       <Sidebar
         activeTab={activeTab}
         setActiveTab={(tab) => {

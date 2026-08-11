@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import { docApi, chatApi } from "../services/api";
 import type { Document, Conversation, Message, MessageSource } from "../types";
 
 import { KnowledgeGraph } from "../components/common/KnowledgeGraph";
 import { AIToolsHubModal } from "../components/ui/AIToolsHubModal";
 import { RAGSummaryReport } from "../components/ui/RAGSummaryReport";
+import { AIProcessingIndicator } from "../components/ui/AIProcessingIndicator";
 import { 
   MessageSquare, Plus, Trash2, Send, Edit2, Check, X, FileText, 
   BookOpen, Sparkles, Copy, RotateCcw
@@ -503,8 +505,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
               {messages.map((msg) => {
                 const isUser = msg.role === "user";
                 return (
-                  <div 
+                  <motion.div 
                     key={msg.id} 
+                    initial={{ opacity: 0, x: isUser ? 20 : -20, scale: 0.97 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
                     className={`flex items-start gap-4 ${isUser ? "justify-end" : "justify-start"}`}
                   >
                     {!isUser && (
@@ -633,21 +638,23 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
 
-              {/* Streaming loading animation */}
+              {/* 5-Step AI Reasoning Pipeline */}
               {loading && (
-                <div className="flex items-start gap-4">
-                  <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-xs text-purple-300 font-bold shrink-0">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-start gap-4"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-xs text-indigo-300 font-bold shrink-0">
                     AI
                   </div>
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-2 text-xs font-mono text-purple-400">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full animate-ping" />
-                    Iris AI is retrieving vector context & generating grounded answer...
-                  </div>
-                </div>
+                  <AIProcessingIndicator label="Iris AI Engine Active" />
+                </motion.div>
               )}
             </div>
           )}
