@@ -26,6 +26,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
   const [selectedDocIds, setSelectedDocIds] = useState<number[]>([]);
   const [showDocSelector, setShowDocSelector] = useState(false);
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
+  const [showMobileThreads, setShowMobileThreads] = useState(false);
 
   // Loading and inputs
   const [inputMsg, setInputMsg] = useState(initialPrompt || "");
@@ -260,10 +261,58 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-slate-950 font-sans">
+    <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-slate-950 font-sans relative">
       
-      {/* Left Sidebar Pane: Threads & Dynamic Knowledge Mesh Graph */}
-      <div className="w-80 border-r border-white/5 flex flex-col justify-between p-4 bg-[#0F131C] shrink-0 select-none">
+      {/* Mobile Threads Modal Drawer Overlay */}
+      {showMobileThreads && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 md:hidden flex justify-start">
+          <div className="w-[85vw] max-w-xs h-full bg-[#0F131C] border-r border-white/10 p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+              <h2 className="text-xs font-bold text-white font-mono uppercase tracking-wider flex items-center gap-2">
+                <MessageSquare size={14} className="text-purple-400" /> Active Threads
+              </h2>
+              <button
+                onClick={() => setShowMobileThreads(false)}
+                className="text-gray-400 hover:text-white p-1"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-1.5 pt-3 font-mono">
+              <button
+                onClick={() => {
+                  handleCreateChat();
+                  setShowMobileThreads(false);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md mb-3"
+              >
+                <Plus size={14} /> New Chat Session
+              </button>
+
+              {conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  onClick={() => {
+                    setActiveConvId(conv.id);
+                    setShowMobileThreads(false);
+                  }}
+                  className={`flex items-center justify-between p-2.5 rounded-xl text-xs cursor-pointer border ${
+                    activeConvId === conv.id
+                      ? "bg-purple-500/10 border-purple-500/30 text-purple-300 font-bold"
+                      : "border-transparent text-gray-400 hover:bg-white/5"
+                  }`}
+                >
+                  <span className="truncate">{conv.title}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Left Sidebar Pane: Threads & Dynamic Knowledge Mesh Graph */}
+      <div className="hidden md:flex w-80 border-r border-white/5 flex-col justify-between p-4 bg-[#0F131C] shrink-0 select-none">
         <div className="space-y-4 flex-1 flex flex-col min-h-0">
           
           {/* New Chat Button */}
@@ -394,13 +443,22 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Mobile Threads Toggle */}
+            <button
+              onClick={() => setShowMobileThreads(true)}
+              className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold bg-[#1A1E2B] text-gray-300 border border-[#232838]"
+            >
+              <MessageSquare size={13} className="text-purple-400" />
+              <span>Threads</span>
+            </button>
+
             {/* AI Tools Suite Trigger Button */}
             <button
               onClick={() => setToolsModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-purple-500/10 text-purple-300 border border-purple-500/30 hover:bg-purple-500/20 transition-all shadow-sm"
             >
-              <Sparkles size={13} className="text-purple-400" /> AI Tools Suite
+              <Sparkles size={13} className="text-purple-400" /> <span className="hidden sm:inline">AI Tools Suite</span><span className="sm:hidden">Tools</span>
             </button>
 
             {/* Document scope selector */}
@@ -517,16 +575,16 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
                         AI
                       </div>
                     )}
-                    <div className="max-w-[85%] space-y-2">
+                    <div className="max-w-[92%] sm:max-w-[85%] space-y-2 min-w-0">
                       <div 
-                        className={`rounded-2xl p-4 text-xs sm:text-sm leading-relaxed border ${
+                        className={`rounded-2xl p-3.5 sm:p-4 text-xs sm:text-sm leading-relaxed border break-words overflow-hidden ${
                           isUser 
                             ? "bg-[#6E6BFF] border-transparent text-white shadow-lg font-medium" 
                             : "bg-[#12151F] border-[#232838] text-[#EDEFF7] shadow-lg"
                         }`}
                       >
                         {isUser ? (
-                          msg.content
+                          <div className="break-words">{msg.content}</div>
                         ) : msg.content.includes("###") || msg.content.includes("Summary") || msg.content.includes("Key Finding") || msg.content.includes("Matrix") ? (
                           <RAGSummaryReport
                             summaryData={{
@@ -540,7 +598,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ initialPrompt }) => {
                             docTitle={documents.find((d) => msg.sources?.[0]?.document_id === d.id)?.display_name || "Grounded Document Analysis"}
                           />
                         ) : (
-                          <div className="whitespace-pre-wrap">
+                          <div className="whitespace-pre-wrap break-words overflow-hidden">
                             {renderMessageContent(msg.content, msg.sources)}
                           </div>
                         )}

@@ -26,6 +26,7 @@ const AppContent: React.FC = () => {
   const [commandOpen, setCommandOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [aboutDeveloperOpen, setAboutDeveloperOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
@@ -117,6 +118,8 @@ const AppContent: React.FC = () => {
           setSelectedDocId(null);
         }}
         onOpenAboutDeveloper={() => setAboutDeveloperOpen(true)}
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -127,6 +130,7 @@ const AppContent: React.FC = () => {
             setActiveTab(tab);
             setSelectedDocId(null);
           }}
+          onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
 
         <div className="flex-1 overflow-y-auto">

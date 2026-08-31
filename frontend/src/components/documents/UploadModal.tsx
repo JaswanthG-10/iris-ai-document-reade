@@ -220,8 +220,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg glass-panel rounded-2xl relative overflow-hidden flex flex-col min-h-[380px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
+      <div className="w-full max-w-lg bg-[#12151F] border border-[#232838] rounded-3xl relative overflow-hidden flex flex-col min-h-[340px] max-h-[90vh] shadow-2xl">
         
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/5">

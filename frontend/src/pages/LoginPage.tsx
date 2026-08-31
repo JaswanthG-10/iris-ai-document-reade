@@ -104,7 +104,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-[#0A0A0A] text-[#EDEFF7] font-sans overflow-hidden select-none relative">
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#0A0A0A] text-[#EDEFF7] font-sans overflow-y-auto lg:overflow-hidden select-none relative">
       
       {/* Dynamic Cursor Parallax Glow Follower */}
       <div 
